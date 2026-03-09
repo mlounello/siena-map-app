@@ -14,6 +14,7 @@ import {
   Toolbar,
 } from '@/components/ui/siena';
 import { FormField, SelectInput, TextArea, TextInput } from '@/components/ui/form-controls';
+import { LoadingInline } from '@/components/ui/loading';
 
 type MapDetail = {
   id: string;
@@ -82,7 +83,7 @@ export default function MapDetailPage() {
     await load(map.id);
   }
 
-  if (!map) return <StatusMessage>Loading map workspace…</StatusMessage>;
+  if (!map) return <LoadingInline>Loading map workspace…</LoadingInline>;
 
   return (
     <AppShell>
@@ -104,8 +105,8 @@ export default function MapDetailPage() {
         }
       />
 
-      <div className="grid gap-4 xl:grid-cols-[1.35fr_1fr]">
-        <SectionCard title="Builder Areas" subtitle="Navigate between map content, route structure, and embed output.">
+      <section className="grid gap-4 xl:grid-cols-[1.25fr_1fr]">
+        <SectionCard title="Builder Areas" subtitle="Navigate between POIs, route connections, and embeds.">
           <ActionBar>
             <Link href={`/dashboard/maps/${map.id}/pois`}>
               <Button variant="secondary">POI Manager</Button>
@@ -137,7 +138,7 @@ export default function MapDetailPage() {
             </p>
           ) : null}
         </SectionCard>
-      </div>
+      </section>
 
       <SectionCard title="Map Settings" subtitle="Core metadata and display behavior for this map.">
         <form onSubmit={saveBasics} className="form-grid">

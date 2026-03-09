@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { PublicMapShell } from '@/components/public/public-map-shell';
-import { Badge, Panel, Toolbar } from '@/components/ui/siena';
+import { AppShell, Badge, Panel, Toolbar } from '@/components/ui/siena';
 import { createDbClient } from '@/lib/supabase/server';
 
 export default async function PublicMapPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -33,11 +33,11 @@ export default async function PublicMapPage({ params }: { params: Promise<{ slug
     .order('order_index', { ascending: true });
 
   return (
-    <section className="space-y-6">
+    <AppShell>
       <Panel>
         <header className="space-y-3">
-          <h1 className="text-4xl font-semibold tracking-tight text-[var(--brand)]">{map.title}</h1>
-          {map.intro_text ? <p className="max-w-3xl text-sm text-black/75">{map.intro_text}</p> : null}
+          <h1 className="text-[2rem] font-semibold tracking-[-0.02em] text-[var(--heading)] md:text-[2.35rem]">{map.title}</h1>
+          {map.intro_text ? <p className="max-w-3xl text-sm leading-6 text-black/74">{map.intro_text}</p> : null}
           <Toolbar>
             <Badge label={map.display_mode.replaceAll('_', ' ')} tone="info" />
             <Badge label={map.visibility.replaceAll('_', ' ')} tone="neutral" />
@@ -53,6 +53,6 @@ export default async function PublicMapPage({ params }: { params: Promise<{ slug
         pois={pois ?? []}
         routeConnections={routeConnections ?? []}
       />
-    </section>
+    </AppShell>
   );
 }

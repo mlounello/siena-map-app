@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   AppShell,
   Badge,
@@ -11,6 +11,7 @@ import {
   StatusMessage,
 } from '@/components/ui/siena';
 import { FormField, TextInput } from '@/components/ui/form-controls';
+import { LoadingInline } from '@/components/ui/loading';
 
 type QueueMap = { id: string; title: string; shell_status: string; publication_status: string };
 type QueuePoi = { id: string; map_id: string; title: string; status: string; stop_number: number | null };
@@ -22,6 +23,18 @@ export default function ReviewQueuePage() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const mapTitleById = new Map(maps.map((m) => [m.id, m.title]));
+
+  const queueCounts = useMemo(
+    () => ({
+      maps: maps.length,
+      pois: pois.length,
+      total: maps.length + pois.length,
+      rejected:
+        maps.filter((m) => m.shell_status === 'rejected').length +
+        pois.filter((p) => p.status === 'rejected').length,
+    }),
+    [maps, pois]
+  );
 
   async function load() {
     setLoading(true);
@@ -77,23 +90,46 @@ export default function ReviewQueuePage() {
         subtitle="Review submitted maps and POIs based on role scope and department ownership."
       />
 
-      <SectionCard title="Queue Filters" subtitle="Limit moderation results to a single department when needed.">
-        <div className="form-row md:grid-cols-[minmax(0,420px)_auto] md:items-end">
-          <FormField label="Department UUID (optional)">
-            <TextInput
-              value={departmentId}
-              onChange={(e) => setDepartmentId(e.target.value)}
-              placeholder="Filter by department"
-            />
-          </FormField>
-          <div className="action-bar">
-            <Button variant="secondary" onClick={() => setDepartmentId('')}>Clear Filter</Button>
+      <section className="grid gap-4 xl:grid-cols-[1.1fr_1.5fr]">
+        <SectionCard title="Queue Filters" subtitle="Limit moderation results to a single department.">
+          <div className="form-row md:grid-cols-[minmax(0,420px)_auto] md:items-end">
+            <FormField label="Department UUID (optional)">
+              <TextInput
+                value={departmentId}
+                onChange={(e) => setDepartmentId(e.target.value)}
+                placeholder="Filter by department"
+              />
+            </FormField>
+            <div className="action-bar">
+              <Button variant="secondary" onClick={() => setDepartmentId('')}>Clear Filter</Button>
+            </div>
           </div>
-        </div>
-      </SectionCard>
+        </SectionCard>
+
+        <SectionCard title="Queue Snapshot" subtitle="Current moderation queue by item type.">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-3.5">
+              <p className="row-meta">Total in queue</p>
+              <p className="mt-1 text-2xl font-semibold text-[var(--heading)]">{queueCounts.total}</p>
+            </div>
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-3.5">
+              <p className="row-meta">Map items</p>
+              <p className="mt-1 text-2xl font-semibold text-[var(--heading)]">{queueCounts.maps}</p>
+            </div>
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-3.5">
+              <p className="row-meta">POI items</p>
+              <p className="mt-1 text-2xl font-semibold text-[var(--heading)]">{queueCounts.pois}</p>
+            </div>
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-3.5">
+              <p className="row-meta">Rejected</p>
+              <p className="mt-1 text-2xl font-semibold text-[var(--heading)]">{queueCounts.rejected}</p>
+            </div>
+          </div>
+        </SectionCard>
+      </section>
 
       {message ? <StatusMessage>{message}</StatusMessage> : null}
-      {loading ? <StatusMessage>Loading queue…</StatusMessage> : null}
+      {loading ? <LoadingInline>Loading queue…</LoadingInline> : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <SectionCard title="Map Reviews" subtitle={`${maps.length} item(s) awaiting action.`}>

@@ -13,6 +13,7 @@ import {
   StatusMessage,
 } from '@/components/ui/siena';
 import { FormField, SelectInput, TextInput } from '@/components/ui/form-controls';
+import { LoadingInline } from '@/components/ui/loading';
 
 type MapItem = {
   id: string;
@@ -109,10 +110,15 @@ export default function MapsPage() {
       <PageHeader
         eyebrow="Map Governance"
         title="Maps Console"
-        subtitle="Create map shells, manage workflow state, and monitor publication readiness."
+        subtitle="Create map shells, manage approval states, and publish map experiences."
+        actions={
+          <Link href="/dashboard/review-queue">
+            <Button variant="secondary">Open Review Queue</Button>
+          </Link>
+        }
       />
 
-      <div className="grid gap-4 xl:grid-cols-[1.1fr_1.6fr]">
+      <section className="grid gap-4 xl:grid-cols-[1.05fr_1.55fr]">
         <SectionCard
           title="Create Map Shell"
           subtitle="Department Heads and above can create map shells for approval."
@@ -166,10 +172,7 @@ export default function MapsPage() {
           </form>
         </SectionCard>
 
-        <SectionCard
-          title="Inventory Snapshot"
-          subtitle="High-level status mix for all maps in this workspace."
-        >
+        <SectionCard title="Inventory Snapshot" subtitle="Current status mix across all maps.">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-3.5">
               <p className="row-meta">Total maps</p>
@@ -195,13 +198,13 @@ export default function MapsPage() {
             </div>
           </div>
         </SectionCard>
-      </div>
+      </section>
 
       {message ? <StatusMessage>{message}</StatusMessage> : null}
 
       <SectionCard title="Map Inventory" subtitle="All maps with workflow, publication, and visibility status.">
         {loading ? (
-          <StatusMessage>Loading map inventory…</StatusMessage>
+          <LoadingInline>Loading map inventory…</LoadingInline>
         ) : maps.length === 0 ? (
           <EmptyState
             title="No maps yet"

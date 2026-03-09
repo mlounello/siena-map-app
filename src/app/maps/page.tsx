@@ -13,6 +13,7 @@ import {
   StatusMessage,
 } from '@/components/ui/siena';
 import { FormField, SelectInput, TextInput } from '@/components/ui/form-controls';
+import { LoadingInline } from '@/components/ui/loading';
 
 type PublicMap = {
   id: string;
@@ -81,7 +82,7 @@ export default function PublicDirectoryPage() {
       <PageHeader
         eyebrow="Public Directory"
         title="Discover Siena Maps"
-        subtitle="Explore published public and unlisted map experiences across Siena teams."
+        subtitle="Explore published map experiences across Siena teams."
       />
 
       <SectionCard title="Search & Filters" subtitle="Refine by keyword, department, and category.">
@@ -114,7 +115,7 @@ export default function PublicDirectoryPage() {
         </FilterBar>
       </SectionCard>
 
-      {loading ? <StatusMessage>Loading published maps…</StatusMessage> : null}
+      {loading ? <LoadingInline>Loading published maps…</LoadingInline> : null}
 
       {!loading && maps.length === 0 ? (
         <EmptyState
@@ -128,7 +129,7 @@ export default function PublicDirectoryPage() {
         {maps.map((map) => (
           <article
             key={map.id}
-            className="rounded-2xl border border-[var(--border)] bg-gradient-to-b from-white to-[var(--surface-subtle)] p-5 shadow-[0_1px_2px_rgba(20,46,35,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_24px_rgba(20,46,35,0.1)]"
+            className="rounded-2xl border border-[var(--border)] bg-gradient-to-b from-white to-[var(--surface-subtle)] p-5 shadow-[0_1px_2px_rgba(20,46,35,0.06)] transition hover:-translate-y-0.5 hover:border-[var(--border-strong)] hover:shadow-[0_10px_24px_rgba(20,46,35,0.1)]"
           >
             <div className="flex items-start justify-between gap-3">
               <h2 className="text-[1.1rem] font-semibold tracking-[-0.01em] text-[var(--heading)]">{map.title}</h2>
