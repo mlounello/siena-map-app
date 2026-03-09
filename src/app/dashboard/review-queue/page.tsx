@@ -102,7 +102,7 @@ export default function ReviewQueuePage() {
               <EmptyState title="No map reviews" description="Submitted and rejected map shells will appear here." />
             ) : (
               maps.map((item) => (
-                <article key={item.id} className="rounded-[12px] border border-[var(--border)] bg-[var(--surface-subtle)] p-3.5">
+                <article key={item.id} className="review-item">
                   <p className="row-title">{item.title}</p>
                   <div className="mt-2 toolbar">
                     <Badge
@@ -130,7 +130,7 @@ export default function ReviewQueuePage() {
               <EmptyState title="No POI reviews" description="Submitted and rejected POIs will appear here." />
             ) : (
               pois.map((item) => (
-                <article key={item.id} className="rounded-[12px] border border-[var(--border)] bg-[var(--surface-subtle)] p-3.5">
+                <article key={item.id} className="review-item">
                   <p className="row-title">
                     {item.stop_number ? `${item.stop_number}. ` : ''}
                     {item.title}

@@ -104,38 +104,40 @@ export default function MapDetailPage() {
         }
       />
 
-      <SectionCard title="Builder Areas" subtitle="Navigate between map content, route structure, and embed output.">
-        <ActionBar>
-          <Link href={`/dashboard/maps/${map.id}/pois`}>
-            <Button variant="secondary">POI Manager</Button>
-          </Link>
-          <Link href={`/dashboard/maps/${map.id}/routes`}>
-            <Button variant="secondary">Route Editor</Button>
-          </Link>
-          <Link href={`/dashboard/maps/${map.id}/embed`}>
-            <Button variant="secondary">Embed Generator</Button>
-          </Link>
-        </ActionBar>
-      </SectionCard>
+      <div className="grid gap-4 xl:grid-cols-[1.35fr_1fr]">
+        <SectionCard title="Builder Areas" subtitle="Navigate between map content, route structure, and embed output.">
+          <ActionBar>
+            <Link href={`/dashboard/maps/${map.id}/pois`}>
+              <Button variant="secondary">POI Manager</Button>
+            </Link>
+            <Link href={`/dashboard/maps/${map.id}/routes`}>
+              <Button variant="secondary">Route Editor</Button>
+            </Link>
+            <Link href={`/dashboard/maps/${map.id}/embed`}>
+              <Button variant="secondary">Embed Generator</Button>
+            </Link>
+          </ActionBar>
+        </SectionCard>
 
-      <SectionCard title="Workflow State" subtitle="Shell approval and publication are intentionally separate.">
-        <Toolbar>
-          <Badge
-            label={`Shell ${map.shell_status.replaceAll('_', ' ')}`}
-            tone={map.shell_status === 'approved' ? 'success' : map.shell_status === 'rejected' ? 'danger' : 'warning'}
-          />
-          <Badge
-            label={`Publication ${map.publication_status}`}
-            tone={map.publication_status === 'published' ? 'success' : 'warning'}
-          />
-          <Badge label={`Visibility ${map.visibility.replaceAll('_', ' ')}`} tone="info" />
-        </Toolbar>
-        {map.publication_status !== 'published' ? (
-          <p className="row-meta mt-3">
-            Public routes remain hidden until publication is set to published. Use Internal Preview for pre-launch QA.
-          </p>
-        ) : null}
-      </SectionCard>
+        <SectionCard title="Workflow State" subtitle="Shell approval and publication are intentionally separate.">
+          <Toolbar>
+            <Badge
+              label={`Shell ${map.shell_status.replaceAll('_', ' ')}`}
+              tone={map.shell_status === 'approved' ? 'success' : map.shell_status === 'rejected' ? 'danger' : 'warning'}
+            />
+            <Badge
+              label={`Publication ${map.publication_status}`}
+              tone={map.publication_status === 'published' ? 'success' : 'warning'}
+            />
+            <Badge label={`Visibility ${map.visibility.replaceAll('_', ' ')}`} tone="info" />
+          </Toolbar>
+          {map.publication_status !== 'published' ? (
+            <p className="row-meta mt-3">
+              Public routes remain hidden until publication is set to published. Use Internal Preview for pre-launch QA.
+            </p>
+          ) : null}
+        </SectionCard>
+      </div>
 
       <SectionCard title="Map Settings" subtitle="Core metadata and display behavior for this map.">
         <form onSubmit={saveBasics} className="form-grid">

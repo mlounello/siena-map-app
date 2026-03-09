@@ -122,8 +122,8 @@ export function Badge({
 export function EmptyState({ title, description, action }: { title: string; description?: string; action?: ReactNode }) {
   return (
     <div className="empty-state">
-      <p className="font-semibold text-[var(--heading)]">{title}</p>
-      {description ? <p className="mt-1 text-sm">{description}</p> : null}
+      <p className="text-[1.01rem] font-semibold text-[var(--heading)]">{title}</p>
+      {description ? <p className="mt-1.5 text-sm">{description}</p> : null}
       {action ? <div className="mt-3 action-bar justify-center">{action}</div> : null}
     </div>
   );
@@ -137,6 +137,12 @@ export function DataTable({ children }: { children: ReactNode }) {
   );
 }
 
-export function StatusMessage({ children }: { children: ReactNode }) {
-  return <p className="status-message">{children}</p>;
+export function StatusMessage({
+  children,
+  className = '',
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return <p className={`status-message ${className}`.trim()}>{children}</p>;
 }

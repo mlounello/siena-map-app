@@ -112,12 +112,12 @@ export default function MapsPage() {
         subtitle="Create map shells, manage workflow state, and monitor publication readiness."
       />
 
-      <SectionCard
-        title="Create Map Shell"
-        subtitle="Department Heads and above can create map shells for approval."
-      >
-        <form onSubmit={createMap} className="form-grid">
-          <div className="form-row md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 xl:grid-cols-[1.1fr_1.6fr]">
+        <SectionCard
+          title="Create Map Shell"
+          subtitle="Department Heads and above can create map shells for approval."
+        >
+          <form onSubmit={createMap} className="form-grid">
             <FormField label="Map title">
               <TextInput
                 placeholder="Campus Tour"
@@ -134,36 +134,68 @@ export default function MapsPage() {
                 required
               />
             </FormField>
-            <FormField label="Primary department">
-              <SelectInput
-                value={createForm.primary_department_id}
-                onChange={(e) => setCreateForm((p) => ({ ...p, primary_department_id: e.target.value }))}
-                required
-              >
-                <option value="">Select department</option>
-                {departments.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </SelectInput>
-            </FormField>
-            <FormField label="Visibility">
-              <SelectInput
-                value={createForm.visibility}
-                onChange={(e) => setCreateForm((p) => ({ ...p, visibility: e.target.value }))}
-              >
-                <option value="internal_only">Internal only</option>
-                <option value="unlisted">Unlisted</option>
-                <option value="public">Public</option>
-              </SelectInput>
-            </FormField>
+            <div className="form-row md:grid-cols-2">
+              <FormField label="Primary department">
+                <SelectInput
+                  value={createForm.primary_department_id}
+                  onChange={(e) => setCreateForm((p) => ({ ...p, primary_department_id: e.target.value }))}
+                  required
+                >
+                  <option value="">Select department</option>
+                  {departments.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </SelectInput>
+              </FormField>
+              <FormField label="Visibility">
+                <SelectInput
+                  value={createForm.visibility}
+                  onChange={(e) => setCreateForm((p) => ({ ...p, visibility: e.target.value }))}
+                >
+                  <option value="internal_only">Internal only</option>
+                  <option value="unlisted">Unlisted</option>
+                  <option value="public">Public</option>
+                </SelectInput>
+              </FormField>
+            </div>
+            <div className="action-bar">
+              <Button type="submit">Create Map Shell</Button>
+            </div>
+          </form>
+        </SectionCard>
+
+        <SectionCard
+          title="Inventory Snapshot"
+          subtitle="High-level status mix for all maps in this workspace."
+        >
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-3.5">
+              <p className="row-meta">Total maps</p>
+              <p className="mt-1 text-2xl font-semibold text-[var(--heading)]">{maps.length}</p>
+            </div>
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-3.5">
+              <p className="row-meta">Published</p>
+              <p className="mt-1 text-2xl font-semibold text-[var(--heading)]">
+                {maps.filter((m) => m.publication_status === 'published').length}
+              </p>
+            </div>
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-3.5">
+              <p className="row-meta">Pending shell review</p>
+              <p className="mt-1 text-2xl font-semibold text-[var(--heading)]">
+                {maps.filter((m) => m.shell_status === 'submitted_for_review').length}
+              </p>
+            </div>
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-3.5">
+              <p className="row-meta">Public / Unlisted</p>
+              <p className="mt-1 text-2xl font-semibold text-[var(--heading)]">
+                {maps.filter((m) => m.visibility !== 'internal_only').length}
+              </p>
+            </div>
           </div>
-          <div className="action-bar">
-            <Button type="submit">Create Map Shell</Button>
-          </div>
-        </form>
-      </SectionCard>
+        </SectionCard>
+      </div>
 
       {message ? <StatusMessage>{message}</StatusMessage> : null}
 
