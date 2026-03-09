@@ -1,29 +1,46 @@
-import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { getCurrentProfile } from '@/lib/auth/roles';
+import { SectionCard } from '@/components/dashboard/section-card';
 
 export default async function DashboardPage() {
   const profile = await getCurrentProfile();
-
-  if (!profile) {
-    return (
-      <section className="space-y-4">
-        <h1 className="text-3xl font-semibold text-[var(--brand)]">Dashboard</h1>
-        <p>You are not signed in.</p>
-        <Link href="/login" className="underline">
-          Go to login
-        </Link>
-      </section>
-    );
-  }
+  if (!profile) redirect('/login');
 
   return (
-    <section className="space-y-4">
-      <h1 className="text-3xl font-semibold text-[var(--brand)]">Dashboard</h1>
-      <p className="text-black/80">
-        Signed in as <strong>{profile.email}</strong> with role <strong>{profile.role}</strong>.
-      </p>
-      <div className="rounded-xl border border-black/10 bg-white p-4 text-sm">
-        Phase 1 scaffold includes API routes for map and POI operations and a review queue endpoint.
+    <section className="space-y-6">
+      <header>
+        <h1 className="text-3xl font-semibold tracking-tight text-[var(--brand)]">Dashboard</h1>
+        <p className="mt-1 text-sm text-black/70">
+          Signed in as <strong>{profile.email}</strong> ({profile.role})
+        </p>
+      </header>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <SectionCard
+          title="Maps Console"
+          description="Create maps, edit map settings, and run shell/publish workflows."
+          href="/dashboard/maps"
+        />
+        <SectionCard
+          title="Review Queue"
+          description="Review submitted/rejected map and POI items by role scope."
+          href="/dashboard/review-queue"
+        />
+        <SectionCard
+          title="Departments"
+          description="Manage departments and department memberships."
+          href="/dashboard/admin/departments"
+        />
+        <SectionCard
+          title="Users & Roles"
+          description="Assign platform roles for internal accounts."
+          href="/dashboard/admin/users"
+        />
+        <SectionCard
+          title="Public Directory"
+          description="Preview public-facing map directory and map pages."
+          href="/maps"
+        />
       </div>
     </section>
   );

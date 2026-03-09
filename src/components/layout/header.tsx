@@ -8,6 +8,9 @@ export function Header() {
           Siena Maps Platform
         </Link>
         <nav className="flex items-center gap-4 text-sm">
+          <Link href="/maps" className="hover:underline">
+            Public Maps
+          </Link>
           <Link href="/dashboard" className="hover:underline">
             Dashboard
           </Link>
