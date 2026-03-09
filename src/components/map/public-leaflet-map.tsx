@@ -207,22 +207,24 @@ export function PublicLeafletMap({
               <Polyline positions={guidedLine} pathOptions={{ color: '#8b1f41', weight: 4, opacity: 0.85 }} />
             ) : null}
 
-            {(uiMode === 'guided' ? stops : normalizedPois).map((poi, index) => (
-              <Marker
-                key={poi.id}
-                position={[poi.latitude, poi.longitude]}
-                icon={getMarkerIcon(poi)}
-                eventHandlers={{ click: () => setActiveIndex(index) }}
-              >
-                <Popup>
-                  <p className="font-semibold">{poi.title}</p>
-                  {(Array.isArray(poi.categories) ? poi.categories[0]?.name : poi.categories?.name) ? (
-                    <p className="mt-1 text-xs text-black/65">{Array.isArray(poi.categories) ? poi.categories[0]?.name : poi.categories?.name}</p>
-                  ) : null}
-                  {poi.description ? <p className="mt-1 text-sm">{poi.description}</p> : null}
-                </Popup>
-              </Marker>
-            ))}
+            {leafletModule
+              ? (uiMode === 'guided' ? stops : normalizedPois).map((poi, index) => (
+                  <Marker
+                    key={poi.id}
+                    position={[poi.latitude, poi.longitude]}
+                    icon={getMarkerIcon(poi)}
+                    eventHandlers={{ click: () => setActiveIndex(index) }}
+                  >
+                    <Popup>
+                      <p className="font-semibold">{poi.title}</p>
+                      {(Array.isArray(poi.categories) ? poi.categories[0]?.name : poi.categories?.name) ? (
+                        <p className="mt-1 text-xs text-black/65">{Array.isArray(poi.categories) ? poi.categories[0]?.name : poi.categories?.name}</p>
+                      ) : null}
+                      {poi.description ? <p className="mt-1 text-sm">{poi.description}</p> : null}
+                    </Popup>
+                  </Marker>
+                ))
+              : null}
 
             <FlyToStop
               target={

@@ -123,23 +123,25 @@ export function InternalBuilderMap({
             <Polyline positions={guideLine} pathOptions={{ color: '#8b1f41', weight: 3, opacity: 0.75 }} />
           ) : null}
 
-          {pois.map((poi) => (
-            <Marker
-              key={poi.id}
-              position={[poi.latitude, poi.longitude]}
-              icon={getMarkerIcon(poi)}
-              draggable
-              eventHandlers={{
-                dragend: (event) => {
-                  const marker = event.target;
-                  const ll = marker.getLatLng();
-                  onMovePoi(poi.id, ll.lat, ll.lng);
-                },
-              }}
-            />
-          ))}
+          {leafletModule
+            ? pois.map((poi) => (
+                <Marker
+                  key={poi.id}
+                  position={[poi.latitude, poi.longitude]}
+                  icon={getMarkerIcon(poi)}
+                  draggable
+                  eventHandlers={{
+                    dragend: (event) => {
+                      const marker = event.target;
+                      const ll = marker.getLatLng();
+                      onMovePoi(poi.id, ll.lat, ll.lng);
+                    },
+                  }}
+                />
+              ))
+            : null}
 
-          {Number.isFinite(draftLat) && Number.isFinite(draftLng) ? (
+          {leafletModule && Number.isFinite(draftLat) && Number.isFinite(draftLng) ? (
             <Marker position={[draftLat, draftLng]} icon={getDraftIcon()} />
           ) : null}
         </MapContainer>
