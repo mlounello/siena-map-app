@@ -1,6 +1,11 @@
 'use client';
 
-import { PublicLeafletMap } from '@/components/map/public-leaflet-map';
+import dynamic from 'next/dynamic';
+
+const PublicLeafletMap = dynamic(
+  () => import('@/components/map/public-leaflet-map').then((module) => module.PublicLeafletMap),
+  { ssr: false }
+);
 
 type Poi = {
   id: string;

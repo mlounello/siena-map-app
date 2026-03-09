@@ -2,10 +2,15 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { InternalBuilderMap } from '@/components/map/internal-builder-map';
+import dynamic from 'next/dynamic';
 import { AppShell, Badge, Button, EmptyState, PageHeader, SectionCard, StatusMessage } from '@/components/ui';
 import { FormField, SelectInput, TextArea, TextInput } from '@/components/ui/form-controls';
 import { LoadingRows } from '@/components/ui/loading';
+
+const InternalBuilderMap = dynamic(
+  () => import('@/components/map/internal-builder-map').then((module) => module.InternalBuilderMap),
+  { ssr: false, loading: () => <LoadingRows rows={4} /> }
+);
 
 type Poi = {
   id: string;
