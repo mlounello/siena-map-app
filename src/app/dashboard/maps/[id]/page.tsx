@@ -3,7 +3,17 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Badge, Button, PageHeader, Panel, Toolbar } from '@/components/ui/siena';
+import {
+  ActionBar,
+  AppShell,
+  Badge,
+  Button,
+  PageHeader,
+  SectionCard,
+  StatusMessage,
+  Toolbar,
+} from '@/components/ui/siena';
+import { FormField, SelectInput, TextArea, TextInput } from '@/components/ui/form-controls';
 
 type MapDetail = {
   id: string;
@@ -52,7 +62,7 @@ export default function MapDetailPage() {
     const json = await res.json();
     if (!res.ok) return setMessage(json.error ?? 'Failed to save map');
     setMap(json.map);
-    setMessage('Saved map settings.');
+    setMessage('Map settings saved.');
   }
 
   async function runAction(action: 'submit' | 'approve' | 'reject' | 'publish') {
@@ -72,27 +82,18 @@ export default function MapDetailPage() {
     await load(map.id);
   }
 
-  if (!map) return <p className="siena-subtitle">Loading map…</p>;
+  if (!map) return <StatusMessage>Loading map workspace…</StatusMessage>;
 
   return (
-    <section className="space-y-6">
+    <AppShell>
       <PageHeader
-        eyebrow="Map Builder"
+        eyebrow="Map Workspace"
         title={map.title}
-        subtitle={`Slug: /${map.slug}`}
+        subtitle={`/${map.slug}`}
         actions={
           <>
             <Link href={`/dashboard/maps/${map.id}/preview`}>
               <Button variant="secondary">Internal Preview</Button>
-            </Link>
-            <Link href={`/dashboard/maps/${map.id}/pois`}>
-              <Button variant="secondary">POI Manager</Button>
-            </Link>
-            <Link href={`/dashboard/maps/${map.id}/routes`}>
-              <Button variant="secondary">Route Editor</Button>
-            </Link>
-            <Link href={`/dashboard/maps/${map.id}/embed`}>
-              <Button variant="secondary">Embed Generator</Button>
             </Link>
             {map.visibility !== 'internal_only' && map.publication_status === 'published' ? (
               <Link href={`/maps/${map.slug}`} target="_blank">
@@ -103,48 +104,97 @@ export default function MapDetailPage() {
         }
       />
 
-      <Panel title="Workflow State">
+      <SectionCard title="Builder Areas" subtitle="Navigate between map content, route structure, and embed output.">
+        <ActionBar>
+          <Link href={`/dashboard/maps/${map.id}/pois`}>
+            <Button variant="secondary">POI Manager</Button>
+          </Link>
+          <Link href={`/dashboard/maps/${map.id}/routes`}>
+            <Button variant="secondary">Route Editor</Button>
+          </Link>
+          <Link href={`/dashboard/maps/${map.id}/embed`}>
+            <Button variant="secondary">Embed Generator</Button>
+          </Link>
+        </ActionBar>
+      </SectionCard>
+
+      <SectionCard title="Workflow State" subtitle="Shell approval and publication are intentionally separate.">
         <Toolbar>
-          <Badge label={`Shell: ${map.shell_status.replaceAll('_', ' ')}`} tone={map.shell_status === 'approved' ? 'success' : map.shell_status === 'rejected' ? 'danger' : 'warning'} />
-          <Badge label={`Publication: ${map.publication_status}`} tone={map.publication_status === 'published' ? 'success' : 'warning'} />
-          <Badge label={`Visibility: ${map.visibility.replaceAll('_', ' ')}`} tone="info" />
+          <Badge
+            label={`Shell ${map.shell_status.replaceAll('_', ' ')}`}
+            tone={map.shell_status === 'approved' ? 'success' : map.shell_status === 'rejected' ? 'danger' : 'warning'}
+          />
+          <Badge
+            label={`Publication ${map.publication_status}`}
+            tone={map.publication_status === 'published' ? 'success' : 'warning'}
+          />
+          <Badge label={`Visibility ${map.visibility.replaceAll('_', ' ')}`} tone="info" />
         </Toolbar>
         {map.publication_status !== 'published' ? (
-          <p className="mt-3 text-xs text-black/65">
-            Public route stays hidden until publication is set to published. Use Internal Preview to validate map behavior before launch.
+          <p className="row-meta mt-3">
+            Public routes remain hidden until publication is set to published. Use Internal Preview for pre-launch QA.
           </p>
         ) : null}
-      </Panel>
+      </SectionCard>
 
-      <Panel title="Map Settings">
-        <form onSubmit={saveBasics} className="grid gap-3 md:grid-cols-2">
-          <input value={map.title} onChange={(e) => setMap((p) => (p ? { ...p, title: e.target.value } : p))} className="rounded-md border px-3 py-2 text-sm" />
-          <input value={map.slug} onChange={(e) => setMap((p) => (p ? { ...p, slug: e.target.value } : p))} className="rounded-md border px-3 py-2 text-sm" />
-          <textarea rows={4} value={map.intro_text ?? ''} onChange={(e) => setMap((p) => (p ? { ...p, intro_text: e.target.value } : p))} className="rounded-md border px-3 py-2 text-sm md:col-span-2" />
-          <select value={map.visibility} onChange={(e) => setMap((p) => (p ? { ...p, visibility: e.target.value as MapDetail['visibility'] } : p))} className="rounded-md border px-3 py-2 text-sm">
-            <option value="internal_only">Internal</option>
-            <option value="unlisted">Unlisted</option>
-            <option value="public">Public</option>
-          </select>
-          <select value={map.display_mode} onChange={(e) => setMap((p) => (p ? { ...p, display_mode: e.target.value as MapDetail['display_mode'] } : p))} className="rounded-md border px-3 py-2 text-sm">
-            <option value="both">Both</option>
-            <option value="explore_only">Explore only</option>
-            <option value="guided_only">Guided only</option>
-          </select>
-          <Button type="submit" className="md:col-span-2">Save Settings</Button>
+      <SectionCard title="Map Settings" subtitle="Core metadata and display behavior for this map.">
+        <form onSubmit={saveBasics} className="form-grid">
+          <div className="form-row md:grid-cols-2">
+            <FormField label="Map title">
+              <TextInput value={map.title} onChange={(e) => setMap((p) => (p ? { ...p, title: e.target.value } : p))} />
+            </FormField>
+            <FormField label="Slug">
+              <TextInput value={map.slug} onChange={(e) => setMap((p) => (p ? { ...p, slug: e.target.value } : p))} />
+            </FormField>
+          </div>
+
+          <FormField label="Intro text">
+            <TextArea
+              rows={4}
+              value={map.intro_text ?? ''}
+              onChange={(e) => setMap((p) => (p ? { ...p, intro_text: e.target.value } : p))}
+            />
+          </FormField>
+
+          <div className="form-row md:grid-cols-2">
+            <FormField label="Visibility">
+              <SelectInput
+                value={map.visibility}
+                onChange={(e) => setMap((p) => (p ? { ...p, visibility: e.target.value as MapDetail['visibility'] } : p))}
+              >
+                <option value="internal_only">Internal only</option>
+                <option value="unlisted">Unlisted</option>
+                <option value="public">Public</option>
+              </SelectInput>
+            </FormField>
+            <FormField label="Display mode">
+              <SelectInput
+                value={map.display_mode}
+                onChange={(e) => setMap((p) => (p ? { ...p, display_mode: e.target.value as MapDetail['display_mode'] } : p))}
+              >
+                <option value="both">Both</option>
+                <option value="explore_only">Explore only</option>
+                <option value="guided_only">Guided only</option>
+              </SelectInput>
+            </FormField>
+          </div>
+
+          <ActionBar>
+            <Button type="submit">Save Settings</Button>
+          </ActionBar>
         </form>
-      </Panel>
+      </SectionCard>
 
-      <Panel title="Workflow Actions">
-        <Toolbar>
+      <SectionCard title="Workflow Actions" subtitle="Execute moderation and publication actions.">
+        <ActionBar>
           <Button variant="secondary" onClick={() => runAction('submit')}>Submit</Button>
           <Button variant="secondary" onClick={() => runAction('approve')}>Approve</Button>
           <Button variant="danger" onClick={() => runAction('reject')}>Reject</Button>
           <Button onClick={() => runAction('publish')}>Publish</Button>
-        </Toolbar>
-      </Panel>
+        </ActionBar>
+      </SectionCard>
 
-      {message ? <p className="siena-subtitle text-[var(--brand)]">{message}</p> : null}
-    </section>
+      {message ? <StatusMessage>{message}</StatusMessage> : null}
+    </AppShell>
   );
 }

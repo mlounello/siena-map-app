@@ -2,7 +2,17 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { PageHeader, Panel } from '@/components/ui/siena';
+import {
+  AppShell,
+  Badge,
+  Button,
+  EmptyState,
+  FilterBar,
+  PageHeader,
+  SectionCard,
+  StatusMessage,
+} from '@/components/ui/siena';
+import { FormField, SelectInput, TextInput } from '@/components/ui/form-controls';
 
 type PublicMap = {
   id: string;
@@ -19,11 +29,13 @@ export default function PublicDirectoryPage() {
   const [maps, setMaps] = useState<PublicMap[]>([]);
   const [allMaps, setAllMaps] = useState<PublicMap[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
   const [q, setQ] = useState('');
   const [departmentId, setDepartmentId] = useState('');
   const [categoryId, setCategoryId] = useState('');
 
   async function load() {
+    setLoading(true);
     const [mapsRes, categoriesRes] = await Promise.all([
       fetch('/api/public/maps', { cache: 'no-store' }),
       fetch('/api/categories', { cache: 'no-store' }),
@@ -36,6 +48,7 @@ export default function PublicDirectoryPage() {
     setAllMaps(list);
     setMaps(list);
     setCategories(categoriesJson.categories ?? []);
+    setLoading(false);
   }
 
   useEffect(() => {
@@ -56,35 +69,72 @@ export default function PublicDirectoryPage() {
   }, [q, departmentId, categoryId]);
 
   return (
-    <section className="space-y-6">
-      <PageHeader eyebrow="Siena University" title="Public Maps" subtitle="Discover published public experiences and tours." />
+    <AppShell>
+      <PageHeader
+        eyebrow="Public Directory"
+        title="Discover Siena Maps"
+        subtitle="Explore published public and unlisted map experiences across Siena teams."
+      />
 
-      <Panel title="Search and Filter">
-        <div className="grid gap-3 md:grid-cols-3">
-          <input className="rounded-md border px-3 py-2 text-sm" placeholder="Search maps" value={q} onChange={(e) => setQ(e.target.value)} />
-          <select className="rounded-md border px-3 py-2 text-sm" value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}>
-            <option value="">All departments</option>
-            {departmentOptions.map((id) => <option key={id} value={id}>{id}</option>)}
-          </select>
-          <select className="rounded-md border px-3 py-2 text-sm" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-            <option value="">All categories</option>
-            {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
-          </select>
-        </div>
-      </Panel>
+      <SectionCard title="Search & Filters" subtitle="Refine by keyword, department, and category.">
+        <FilterBar>
+          <div className="grid w-full gap-3 md:grid-cols-3">
+            <FormField label="Search maps">
+              <TextInput placeholder="Campus, Admissions, Tour..." value={q} onChange={(e) => setQ(e.target.value)} />
+            </FormField>
+            <FormField label="Department">
+              <SelectInput value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}>
+                <option value="">All departments</option>
+                {departmentOptions.map((id) => (
+                  <option key={id} value={id}>
+                    {id}
+                  </option>
+                ))}
+              </SelectInput>
+            </FormField>
+            <FormField label="Category">
+              <SelectInput value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+                <option value="">All categories</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </SelectInput>
+            </FormField>
+          </div>
+        </FilterBar>
+      </SectionCard>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {loading ? <StatusMessage>Loading published maps…</StatusMessage> : null}
+
+      {!loading && maps.length === 0 ? (
+        <EmptyState
+          title="No maps match these filters"
+          description="Try broadening your search or clear one or more filters."
+          action={<Button variant="secondary" onClick={() => { setQ(''); setDepartmentId(''); setCategoryId(''); }}>Clear Filters</Button>}
+        />
+      ) : null}
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {maps.map((map) => (
-          <article key={map.id} className="siena-panel">
-            <h2 className="siena-panel-title">{map.title}</h2>
-            <p className="mt-2 text-sm text-black/75">{map.intro_text ?? 'No description provided yet.'}</p>
-            <p className="mt-3 text-xs text-black/55">Type: {map.map_type}</p>
-            <Link href={`/maps/${map.slug}`} className="siena-btn siena-btn-primary mt-4 inline-flex">
-              Open Map
-            </Link>
+          <article key={map.id} className="section-card">
+            <div className="section-card-body">
+              <div className="flex items-start justify-between gap-3">
+                <h2 className="text-lg font-semibold text-[var(--heading)]">{map.title}</h2>
+                <Badge label={map.map_type.replaceAll('_', ' ')} tone="info" />
+              </div>
+              <p className="mt-2 text-sm text-black/75">{map.intro_text ?? 'No description provided yet.'}</p>
+              <p className="row-meta mt-2">Department {map.primary_department_id}</p>
+              <div className="mt-4 action-bar">
+                <Link href={`/maps/${map.slug}`}>
+                  <Button>Open Map</Button>
+                </Link>
+              </div>
+            </div>
           </article>
         ))}
-      </div>
-    </section>
+      </section>
+    </AppShell>
   );
 }

@@ -34,7 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className={`${oswald.variable} ${gudea.variable} ${merriweather.variable}`}>
         <Header />
-        <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+        <main className="app-main">{children}</main>
       </body>
     </html>
   );

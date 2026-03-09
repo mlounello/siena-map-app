@@ -1,4 +1,8 @@
-import type { ReactNode } from 'react';
+import type { ButtonHTMLAttributes, ReactNode } from 'react';
+
+export function AppShell({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return <section className={`page-container page-stack ${className}`.trim()}>{children}</section>;
+}
 
 export function PageHeader({
   eyebrow,
@@ -12,39 +16,69 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <header className="space-y-2">
-      {eyebrow ? <p className="siena-eyebrow">{eyebrow}</p> : null}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="siena-title">{title}</h1>
-        {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
+    <header className="page-header">
+      {eyebrow ? <p className="page-eyebrow">{eyebrow}</p> : null}
+      <div className="page-header-top">
+        <h1 className="page-title">{title}</h1>
+        {actions ? <div className="action-bar">{actions}</div> : null}
       </div>
-      {subtitle ? <p className="siena-subtitle max-w-3xl">{subtitle}</p> : null}
+      {subtitle ? <p className="page-subtitle">{subtitle}</p> : null}
     </header>
   );
 }
 
-export function Panel({
+export function SectionCard({
   title,
   subtitle,
+  actions,
   children,
   className = '',
+  bodyClassName = '',
 }: {
   title?: string;
   subtitle?: string;
+  actions?: ReactNode;
   children: ReactNode;
   className?: string;
+  bodyClassName?: string;
 }) {
   return (
-    <section className={`siena-panel ${className}`.trim()}>
-      {title ? <h2 className="siena-panel-title">{title}</h2> : null}
-      {subtitle ? <p className="siena-panel-subtitle">{subtitle}</p> : null}
-      {children}
+    <section className={`section-card ${className}`.trim()}>
+      {title || subtitle || actions ? (
+        <header className="section-card-header">
+          <div>
+            {title ? <h2 className="section-card-title">{title}</h2> : null}
+            {subtitle ? <p className="section-card-subtitle">{subtitle}</p> : null}
+          </div>
+          {actions ? <div className="action-bar">{actions}</div> : null}
+        </header>
+      ) : null}
+      <div className={`section-card-body ${bodyClassName}`.trim()}>{children}</div>
     </section>
   );
 }
 
+export function Panel(props: {
+  title?: string;
+  subtitle?: string;
+  actions?: ReactNode;
+  children: ReactNode;
+  className?: string;
+  bodyClassName?: string;
+}) {
+  return <SectionCard {...props} />;
+}
+
 export function Toolbar({ children }: { children: ReactNode }) {
-  return <div className="siena-toolbar">{children}</div>;
+  return <div className="toolbar">{children}</div>;
+}
+
+export function FilterBar({ children }: { children: ReactNode }) {
+  return <div className="filter-bar">{children}</div>;
+}
+
+export function ActionBar({ children }: { children: ReactNode }) {
+  return <div className="action-bar">{children}</div>;
 }
 
 export function Button({
@@ -58,19 +92,18 @@ export function Button({
   type?: 'button' | 'submit' | 'reset';
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   className?: string;
-} & React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  const base = 'siena-btn';
+} & ButtonHTMLAttributes<HTMLButtonElement>) {
   const style =
     variant === 'primary'
-      ? 'siena-btn-primary'
+      ? 'btn-primary'
       : variant === 'secondary'
-        ? 'siena-btn-secondary'
+        ? 'btn-secondary'
         : variant === 'danger'
-          ? 'siena-btn-danger'
-          : 'siena-btn-ghost';
+          ? 'btn-danger'
+          : 'btn-ghost';
 
   return (
-    <button type={type} className={`${base} ${style} ${className}`.trim()} {...props}>
+    <button type={type} className={`btn ${style} ${className}`.trim()} {...props}>
       {children}
     </button>
   );
@@ -83,5 +116,27 @@ export function Badge({
   label: string;
   tone?: 'neutral' | 'info' | 'success' | 'warning' | 'danger';
 }) {
-  return <span className={`siena-badge siena-badge-${tone}`}>{label}</span>;
+  return <span className={`badge badge-${tone}`}>{label}</span>;
+}
+
+export function EmptyState({ title, description, action }: { title: string; description?: string; action?: ReactNode }) {
+  return (
+    <div className="empty-state">
+      <p className="font-semibold text-[var(--heading)]">{title}</p>
+      {description ? <p className="mt-1 text-sm">{description}</p> : null}
+      {action ? <div className="mt-3 action-bar justify-center">{action}</div> : null}
+    </div>
+  );
+}
+
+export function DataTable({ children }: { children: ReactNode }) {
+  return (
+    <div className="data-table-wrap">
+      <table className="data-table">{children}</table>
+    </div>
+  );
+}
+
+export function StatusMessage({ children }: { children: ReactNode }) {
+  return <p className="status-message">{children}</p>;
 }

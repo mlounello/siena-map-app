@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { PublicMapShell } from '@/components/public/public-map-shell';
-import { Badge, PageHeader, Panel, Toolbar } from '@/components/ui/siena';
+import { AppShell, Badge, EmptyState, PageHeader, SectionCard, Toolbar } from '@/components/ui/siena';
 import { requireRole } from '@/lib/auth/roles';
 import { createDbClient } from '@/lib/supabase/server';
 
@@ -21,9 +21,10 @@ export default async function MapPreviewPage({ params }: { params: Promise<{ id:
   const { data: map, error: mapError } = await db.from('maps').select('*').eq('id', id).maybeSingle();
   if (mapError || !map) {
     return (
-      <section className="space-y-4">
+      <AppShell>
         <PageHeader eyebrow="Map Preview" title="Map not found" subtitle="The selected map could not be loaded." />
-      </section>
+        <EmptyState title="No preview available" description="This map may have been removed or is no longer accessible." />
+      </AppShell>
     );
   }
 
@@ -46,21 +47,21 @@ export default async function MapPreviewPage({ params }: { params: Promise<{ id:
   const draftPoiCount = (pois ?? []).filter((poi) => poi.status !== 'published').length;
 
   return (
-    <section className="space-y-6">
+    <AppShell>
       <PageHeader
         eyebrow="Internal Preview"
         title={map.title}
-        subtitle="This preview includes unpublished content so teams can validate map experience before go-live."
+        subtitle="Preview includes unpublished content to support QA before public launch."
       />
 
-      <Panel title="Preview State">
+      <SectionCard title="Preview State" subtitle="Current workflow summary for this preview snapshot.">
         <Toolbar>
           <Badge label={`Shell ${map.shell_status.replaceAll('_', ' ')}`} tone={toneForStatus(map.shell_status)} />
           <Badge label={`Publication ${map.publication_status}`} tone={toneForStatus(map.publication_status)} />
           <Badge label={`${poiCount} POIs`} tone="info" />
           <Badge label={`${draftPoiCount} Unpublished POIs`} tone={draftPoiCount > 0 ? 'warning' : 'success'} />
         </Toolbar>
-      </Panel>
+      </SectionCard>
 
       <PublicMapShell
         displayMode={map.display_mode}
@@ -76,6 +77,6 @@ export default async function MapPreviewPage({ params }: { params: Promise<{ id:
         }))}
         routeConnections={routeConnections ?? []}
       />
-    </section>
+    </AppShell>
   );
 }

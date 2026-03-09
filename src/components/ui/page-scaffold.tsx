@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
 
 export function PageScaffold({ children }: { children: ReactNode }) {
-  return <section className="space-y-6">{children}</section>;
+  return <section className="page-container page-stack">{children}</section>;
 }
 
 export function PageSection({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <div className={`space-y-3 ${className}`.trim()}>{children}</div>;
+  return <div className={`page-stack ${className}`.trim()}>{children}</div>;
 }

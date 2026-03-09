@@ -4,6 +4,22 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
+type HeaderUser = {
+  email?: string | null;
+  profile?: {
+    display_name?: string | null;
+    email?: string | null;
+    role?: string | null;
+  } | null;
+};
+
+const navItems = [
+  { label: 'Dashboard', href: '/dashboard' },
+  { label: 'Maps', href: '/dashboard/maps' },
+  { label: 'Approvals', href: '/dashboard/review-queue' },
+  { label: 'Public', href: '/maps' },
+];
+
 function navClass(pathname: string, href: string) {
   const active = pathname === href || pathname.startsWith(`${href}/`);
   return active
@@ -11,26 +27,17 @@ function navClass(pathname: string, href: string) {
     : 'rounded-md px-3 py-1.5 text-white/90 hover:bg-white/10 hover:text-white';
 }
 
-type HeaderUser = {
-  email?: string | null;
-  profile?: {
-    display_name?: string | null;
-    email?: string | null;
-  } | null;
-};
-
 function initialsFromUser(user: HeaderUser | null) {
-  const raw =
-    user?.profile?.display_name ||
-    user?.profile?.email ||
-    user?.email ||
-    'SI';
+  const raw = user?.profile?.display_name || user?.profile?.email || user?.email || 'SM';
   const parts = raw
     .split('@')[0]
     .split(/[\s._-]+/)
     .filter(Boolean);
-  const initials = parts.slice(0, 2).map((p) => p[0]?.toUpperCase() || '').join('');
-  return initials || 'SI';
+  const initials = parts
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() || '')
+    .join('');
+  return initials || 'SM';
 }
 
 export function Header() {
@@ -46,45 +53,37 @@ export function Header() {
         setUser({ email: json.user?.email, profile: json.profile ?? null });
       })
       .catch(() => {
-        // Keep header resilient on unauthenticated/public routes.
+        // Keep header stable if auth endpoint fails on public pages.
       });
+
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const accountLabel = useMemo(() => {
-    return user?.profile?.display_name || user?.email || 'Guest';
-  }, [user]);
-
   const initials = useMemo(() => initialsFromUser(user), [user]);
+  const displayName = user?.profile?.display_name || user?.email || 'Public Visitor';
+  const role = user?.profile?.role ? user.profile.role.replaceAll('_', ' ') : null;
 
   return (
-    <header className="sticky top-0 z-30 border-b border-[var(--brand-dark)]/50 bg-gradient-to-r from-[var(--brand)] to-[var(--brand-dark)] text-white shadow-md backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+    <header className="sticky top-0 z-30 border-b border-[var(--brand-dark)]/50 bg-gradient-to-r from-[var(--brand)] to-[var(--brand-dark)] text-white shadow-md">
+      <div className="mx-auto flex h-16 w-full max-w-[76rem] items-center justify-between gap-4 px-4 md:px-6">
         <Link href="/" className="flex items-center gap-3">
-          <span className="inline-block rounded-sm bg-[var(--brand-yellow)] px-2 py-1 text-[10px] font-bold tracking-[0.16em] text-[#1a1a1a]">
+          <span className="inline-flex h-8 items-center rounded bg-[var(--brand-yellow)] px-2 text-[10px] font-bold tracking-[0.16em] text-[#1a1a1a]">
             SIENA
           </span>
-          <span className="leading-tight">
-            <span className="block headline-primary text-sm tracking-[0.08em]">Siena Maps</span>
-            <span className="block text-[10px] tracking-[0.14em] text-white/80">Publishing Platform</span>
-          </span>
+          <div className="leading-tight">
+            <p className="text-sm font-semibold uppercase tracking-[0.08em]">Siena Maps</p>
+            <p className="text-[10px] uppercase tracking-[0.14em] text-white/75">Publishing Platform</p>
+          </div>
         </Link>
 
         <nav className="hidden items-center gap-1 text-xs font-semibold tracking-[0.08em] md:flex">
-          <Link href="/dashboard" className={navClass(pathname, '/dashboard')}>
-            Dashboard
-          </Link>
-          <Link href="/dashboard/maps" className={navClass(pathname, '/dashboard/maps')}>
-            Maps
-          </Link>
-          <Link href="/dashboard/review-queue" className={navClass(pathname, '/dashboard/review-queue')}>
-            Approvals
-          </Link>
-          <Link href="/maps" className={navClass(pathname, '/maps')}>
-            Public
-          </Link>
+          {navItems.map((item) => (
+            <Link key={item.href} href={item.href} className={navClass(pathname, item.href)}>
+              {item.label}
+            </Link>
+          ))}
         </nav>
 
         <div className="flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-2 py-1">
@@ -92,23 +91,18 @@ export function Header() {
             {initials}
           </span>
           <div className="hidden pr-1 text-right sm:block">
-            <p className="max-w-[180px] truncate text-xs font-semibold">{accountLabel}</p>
-            <p className="text-[10px] uppercase tracking-[0.12em] text-white/75">
-              {user ? 'Authenticated' : 'Public'}
-            </p>
+            <p className="max-w-[180px] truncate text-xs font-semibold">{displayName}</p>
+            <p className="text-[10px] uppercase tracking-[0.11em] text-white/75">{role || (user ? 'Authenticated' : 'Public')}</p>
           </div>
         </div>
       </div>
-      <div className="mx-auto flex max-w-6xl items-center gap-1 px-4 pb-2 md:hidden">
-        <Link href="/dashboard" className={navClass(pathname, '/dashboard')}>
-          Dashboard
-        </Link>
-        <Link href="/dashboard/maps" className={navClass(pathname, '/dashboard/maps')}>
-          Maps
-        </Link>
-        <Link href="/maps" className={navClass(pathname, '/maps')}>
-          Public
-        </Link>
+
+      <div className="mx-auto flex w-full max-w-[76rem] items-center gap-1 px-4 pb-2 md:hidden">
+        {navItems.map((item) => (
+          <Link key={item.href} href={item.href} className={navClass(pathname, item.href)}>
+            {item.label}
+          </Link>
+        ))}
       </div>
     </header>
   );
