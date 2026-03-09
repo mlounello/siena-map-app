@@ -70,7 +70,7 @@ function BrandLockup({ compact = false }: { compact?: boolean }) {
         <span className={`block truncate font-semibold text-white ${compact ? 'text-[1.02rem]' : 'text-[1.22rem]'}`}>
           Siena Maps
         </span>
-        <span className={`block truncate text-white/75 ${compact ? 'text-[10px]' : 'text-[11px] tracking-[0.03em]'}`}>
+        <span className={`block truncate text-white/86 ${compact ? 'text-[10px]' : 'text-[11px] tracking-[0.03em]'}`}>
           Publishing Platform
         </span>
       </span>
@@ -153,7 +153,7 @@ export function Header() {
           <BrandLockup />
           <Link
             href={rightAction.href}
-            className="inline-flex h-9 items-center rounded-md border border-white/30 bg-white/10 px-3.5 text-sm font-semibold text-white transition hover:bg-white/16"
+            className="inline-flex h-9 items-center rounded-md border border-white/34 bg-white/12 px-3.5 text-sm font-semibold text-white transition hover:bg-white/20"
           >
             {rightAction.label}
           </Link>
@@ -168,7 +168,7 @@ export function Header() {
         <div className="hidden h-16 grid-cols-[minmax(240px,300px)_1fr_minmax(240px,300px)] items-center gap-3 md:grid">
           <BrandLockup />
 
-          <nav className="mx-auto inline-flex items-center gap-1 rounded-lg border border-white/25 bg-white/8 p-1" aria-label="Primary">
+          <nav className="mx-auto inline-flex items-center gap-1 rounded-lg border border-white/30 bg-white/12 p-1" aria-label="Primary">
             {appNavItems.map((item) => {
               const Icon = item.icon;
               const active = activeKey === item.key;
@@ -177,8 +177,8 @@ export function Header() {
                   key={item.key}
                   href={item.href}
                   className={active
-                    ? 'inline-flex h-9 items-center gap-2 rounded-md bg-white px-3.5 text-sm font-semibold text-[var(--brand-dark)]'
-                    : 'inline-flex h-9 items-center gap-2 rounded-md px-3.5 text-sm font-medium text-white/90 transition hover:bg-white/15 hover:text-white'}
+                    ? 'inline-flex h-9 items-center gap-2 rounded-md bg-white px-3.5 text-sm font-semibold text-[var(--brand-dark)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.55)]'
+                    : 'inline-flex h-9 items-center gap-2 rounded-md px-3.5 text-sm font-semibold text-white/95 transition hover:bg-white/18 hover:text-white'}
                 >
                   <Icon className="h-3.5 w-3.5" />
                   <span>{item.label}</span>
@@ -191,7 +191,7 @@ export function Header() {
             <div className="relative">
               <button
                 type="button"
-                className="inline-flex h-10 items-center gap-2 rounded-full border border-white/28 bg-white/10 px-2.5 pr-3 transition hover:bg-white/16"
+                className="inline-flex h-10 items-center gap-2 rounded-full border border-white/34 bg-white/14 px-2.5 pr-3 transition hover:bg-white/20"
                 onClick={() => setMenuOpen((v) => !v)}
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
@@ -205,9 +205,9 @@ export function Header() {
                 </span>
                 <span className="text-left leading-tight">
                   <span className="block max-w-[150px] truncate text-sm font-semibold text-white">{displayName}</span>
-                  <span className="block text-[11px] text-white/70">{role}</span>
+                  <span className="block text-[11px] font-medium text-white/84">{role}</span>
                 </span>
-                <ChevronDown className="h-4 w-4 text-white/76" />
+                <ChevronDown className="h-4 w-4 text-white/90" />
               </button>
 
               {menuOpen ? (
@@ -273,7 +273,7 @@ export function Header() {
                   href={item.href}
                   className={`${active
                     ? 'inline-flex h-9 items-center gap-1.5 rounded-md bg-white px-3 text-xs font-semibold text-[var(--brand-dark)]'
-                    : 'inline-flex h-9 items-center gap-1.5 rounded-md border border-white/26 bg-white/10 px-3 text-xs font-medium text-white/90 hover:bg-white/16'} shrink-0`}
+                    : 'inline-flex h-9 items-center gap-1.5 rounded-md border border-white/30 bg-white/12 px-3 text-xs font-semibold text-white/95 hover:bg-white/20'} shrink-0`}
                 >
                   <Icon className="h-3.5 w-3.5" />
                   <span>{item.label}</span>
