@@ -81,9 +81,17 @@ export default function MapDetailPage() {
         title={map.title}
         subtitle={`Slug: /${map.slug}`}
         actions={
-          <Link href={`/dashboard/maps/${map.id}/pois`}>
-            <Button variant="secondary">Open POI Manager</Button>
-          </Link>
+          <>
+            <Link href={`/dashboard/maps/${map.id}/pois`}>
+              <Button variant="secondary">POI Manager</Button>
+            </Link>
+            <Link href={`/dashboard/maps/${map.id}/routes`}>
+              <Button variant="secondary">Route Editor</Button>
+            </Link>
+            <Link href={`/dashboard/maps/${map.id}/embed`}>
+              <Button variant="secondary">Embed Generator</Button>
+            </Link>
+          </>
         }
       />
 

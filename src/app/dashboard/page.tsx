@@ -38,6 +38,11 @@ export default async function DashboardPage() {
             href="/dashboard/admin/users"
           />
           <SectionCard
+            title="Categories"
+            description="Manage global category library and lifecycle states."
+            href="/dashboard/admin/categories"
+          />
+          <SectionCard
             title="Public Directory"
             description="Preview public-facing map directory and map pages."
             href="/maps"
