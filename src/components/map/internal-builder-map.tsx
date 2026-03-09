@@ -52,6 +52,8 @@ export function InternalBuilderMap({
   onMovePoi: (poiId: string, lat: number, lng: number) => void;
 }) {
   const [leafletModule, setLeafletModule] = useState<typeof import('leaflet') | null>(null);
+  const [showGuideLine, setShowGuideLine] = useState(true);
+  const [snappedSegments, setSnappedSegments] = useState<Array<[number, number][]>>([]);
   const markerIconCache = useRef<Map<string, any>>(new Map());
 
   useEffect(() => {
@@ -63,7 +65,18 @@ export function InternalBuilderMap({
     [pois]
   );
 
-  const guideLine = sorted.map((poi) => [poi.latitude, poi.longitude] as [number, number]);
+  const straightSegments = useMemo(() => {
+    const segments: Array<[number, number][]> = [];
+    for (let index = 0; index < sorted.length - 1; index += 1) {
+      const from = sorted[index];
+      const to = sorted[index + 1];
+      segments.push([
+        [from.latitude, from.longitude],
+        [to.latitude, to.longitude],
+      ]);
+    }
+    return segments;
+  }, [sorted]);
   const categoryById = useMemo(() => new Map(categories.map((category) => [category.id, category])), [categories]);
   const tilePreset = resolveTilePreset(themePreset);
 
@@ -104,11 +117,62 @@ export function InternalBuilderMap({
     return icon;
   }
 
+  useEffect(() => {
+    if (!showGuideLine || straightSegments.length === 0) {
+      setSnappedSegments([]);
+      return;
+    }
+
+    const controller = new AbortController();
+
+    async function fetchSnappedSegments() {
+      const next: Array<[number, number][]> = await Promise.all(
+        straightSegments.map(async (segment) => {
+          const from = segment[0];
+          const to = segment[1];
+          if (!from || !to) return segment;
+
+          const url = `https://router.project-osrm.org/route/v1/driving/${from[1]},${from[0]};${to[1]},${to[0]}?overview=full&geometries=geojson`;
+
+          try {
+            const response = await fetch(url, { signal: controller.signal });
+            if (!response.ok) return segment;
+            const payload = await response.json();
+            const coordinates: Array<[number, number]> | undefined = payload?.routes?.[0]?.geometry?.coordinates;
+            if (!coordinates || coordinates.length < 2) return segment;
+            return coordinates.map((coord) => [coord[1], coord[0]]);
+          } catch {
+            return segment;
+          }
+        })
+      );
+
+      if (!controller.signal.aborted) setSnappedSegments(next);
+    }
+
+    void fetchSnappedSegments();
+
+    return () => controller.abort();
+  }, [showGuideLine, straightSegments]);
+
   return (
     <div className="overflow-hidden rounded-xl border border-black/10 bg-white">
       <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 text-sm">
         <span>Builder canvas: click to set new POI coordinates, drag existing markers to update location.</span>
-        <span className="text-xs text-black/65">{tilePreset.label}</span>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setShowGuideLine((current) => !current)}
+            className={`rounded-md border px-2.5 py-1 text-xs font-semibold ${
+              showGuideLine
+                ? 'border-[var(--brand)] bg-[var(--brand)] text-white'
+                : 'border-black/15 bg-white text-black/70'
+            }`}
+          >
+            {showGuideLine ? 'Hide Lines' : 'Show Lines'}
+          </button>
+          <span className="text-xs text-black/65">{tilePreset.label}</span>
+        </div>
       </div>
       <div className="h-[460px] w-full">
         <MapContainer center={center} zoom={zoom} className="h-full w-full" scrollWheelZoom>
@@ -123,9 +187,15 @@ export function InternalBuilderMap({
           ))}
           <MapClickCapture onPick={onPick} />
 
-          {guideLine.length > 1 ? (
-            <Polyline positions={guideLine} pathOptions={{ color: '#8b1f41', weight: 3, opacity: 0.75 }} />
-          ) : null}
+          {showGuideLine
+            ? (snappedSegments.length > 0 ? snappedSegments : straightSegments).map((segment, index) => (
+                <Polyline
+                  key={`guide-segment-${index}`}
+                  positions={segment}
+                  pathOptions={{ color: '#8b1f41', weight: 3, opacity: 0.75 }}
+                />
+              ))
+            : null}
 
           {leafletModule
             ? pois.map((poi) => (
