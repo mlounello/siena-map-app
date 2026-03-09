@@ -51,6 +51,7 @@ export function InternalBuilderMap({
   onPick: (lat: number, lng: number) => void;
   onMovePoi: (poiId: string, lat: number, lng: number) => void;
 }) {
+  const LINE_VISIBILITY_STORAGE_KEY = 'siena_maps_builder_show_lines';
   const [leafletModule, setLeafletModule] = useState<typeof import('leaflet') | null>(null);
   const [showGuideLine, setShowGuideLine] = useState(true);
   const [snappedSegments, setSnappedSegments] = useState<Array<[number, number][]>>([]);
@@ -58,6 +59,16 @@ export function InternalBuilderMap({
 
   useEffect(() => {
     void import('leaflet').then((L) => setLeafletModule(L));
+  }, []);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(LINE_VISIBILITY_STORAGE_KEY);
+      if (stored === '0') setShowGuideLine(false);
+      if (stored === '1') setShowGuideLine(true);
+    } catch {
+      // Local storage may be unavailable in restricted browser contexts.
+    }
   }, []);
 
   const sorted = useMemo(
@@ -162,7 +173,17 @@ export function InternalBuilderMap({
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => setShowGuideLine((current) => !current)}
+            onClick={() =>
+              setShowGuideLine((current) => {
+                const next = !current;
+                try {
+                  window.localStorage.setItem(LINE_VISIBILITY_STORAGE_KEY, next ? '1' : '0');
+                } catch {
+                  // Local storage may be unavailable in restricted browser contexts.
+                }
+                return next;
+              })
+            }
             className={`rounded-md border px-2.5 py-1 text-xs font-semibold ${
               showGuideLine
                 ? 'border-[var(--brand)] bg-[var(--brand)] text-white'

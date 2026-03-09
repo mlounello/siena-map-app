@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MapContainer, Marker, Popup, Polyline, TileLayer, useMap } from 'react-leaflet';
+import { CircleMarker, MapContainer, Marker, Popup, Polyline, TileLayer, useMap } from 'react-leaflet';
 import type { LatLngExpression } from 'leaflet';
 import { getPinColor, getPinSymbol } from '@/lib/map/pins';
 import { resolveTilePreset } from '@/lib/map/base-layers';
@@ -75,6 +75,7 @@ export function PublicLeafletMap({
     displayMode === 'guided_only' ? 'guided' : 'explore'
   );
   const [activeIndex, setActiveIndex] = useState(0);
+  const [selectedPoiId, setSelectedPoiId] = useState<string | null>(null);
   const [leafletModule, setLeafletModule] = useState<typeof import('leaflet') | null>(null);
   const [snappedRoutes, setSnappedRoutes] = useState<Record<string, [number, number][]>>({});
   const markerIconCache = useRef<Map<string, any>>(new Map());
@@ -137,6 +138,34 @@ export function PublicLeafletMap({
   const guidedLine = stops.map((stop) => [stop.latitude, stop.longitude] as [number, number]);
   const tilePreset = resolveTilePreset(themePreset);
   const showGuidedLines = uiMode === 'guided' || displayMode === 'guided_only';
+
+  const selectedPoi = useMemo(() => {
+    if (selectedPoiId) {
+      const found = normalizedPois.find((poi) => poi.id === selectedPoiId);
+      if (found) return found;
+    }
+    if (uiMode === 'guided') return activeStop;
+    return null;
+  }, [selectedPoiId, normalizedPois, uiMode, activeStop]);
+
+  const groupedByCategory = useMemo(() => {
+    const groups = new Map<string, { key: string; label: string; items: typeof normalizedPois }>();
+    const list = uiMode === 'guided' ? stops : normalizedPois;
+
+    for (const poi of list) {
+      const category = Array.isArray(poi.categories) ? poi.categories[0] : poi.categories;
+      const label = category?.name || 'Uncategorized';
+      const key = category?.id || 'uncategorized';
+      const existing = groups.get(key);
+      if (existing) {
+        existing.items.push(poi);
+      } else {
+        groups.set(key, { key, label, items: [poi] });
+      }
+    }
+
+    return Array.from(groups.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [normalizedPois, stops, uiMode]);
 
   function getMarkerIcon(poi: Poi) {
     if (!leafletModule) return undefined;
@@ -208,6 +237,12 @@ export function PublicLeafletMap({
     return () => controller.abort();
   }, [explicitRoutes, showGuidedLines]);
 
+  useEffect(() => {
+    if (uiMode === 'guided' && activeStop) {
+      setSelectedPoiId(activeStop.id);
+    }
+  }, [uiMode, activeStop]);
+
   return (
     <section className="grid gap-4 lg:grid-cols-[2fr_1fr]">
       <div className="overflow-hidden rounded-xl border border-black/10 bg-white">
@@ -270,7 +305,12 @@ export function PublicLeafletMap({
                     key={poi.id}
                     position={[poi.latitude, poi.longitude]}
                     icon={getMarkerIcon(poi)}
-                    eventHandlers={{ click: () => setActiveIndex(index) }}
+                    eventHandlers={{
+                      click: () => {
+                        setActiveIndex(index);
+                        setSelectedPoiId(poi.id);
+                      },
+                    }}
                   >
                     <Popup>
                       <p className="font-semibold">{poi.title}</p>
@@ -283,11 +323,21 @@ export function PublicLeafletMap({
                 ))
               : null}
 
+            {selectedPoi ? (
+              <CircleMarker
+                center={[selectedPoi.latitude, selectedPoi.longitude]}
+                radius={10}
+                pathOptions={{ color: '#fcc917', weight: 3, fillColor: '#fcc917', fillOpacity: 0.2 }}
+              />
+            ) : null}
+
             <FlyToStop
               target={
-                uiMode === 'guided' && activeStop
-                  ? ([activeStop.latitude, activeStop.longitude] as LatLngExpression)
-                  : null
+                selectedPoi
+                  ? ([selectedPoi.latitude, selectedPoi.longitude] as LatLngExpression)
+                  : uiMode === 'guided' && activeStop
+                    ? ([activeStop.latitude, activeStop.longitude] as LatLngExpression)
+                    : null
               }
             />
           </MapContainer>
@@ -301,52 +351,69 @@ export function PublicLeafletMap({
 
       <aside className="rounded-xl border border-black/10 bg-white p-4">
         <h2 className="font-semibold">Stops</h2>
-        {activeStop && uiMode === 'guided' ? (
+        {selectedPoi ? (
           <div className="mt-3 rounded-lg bg-[var(--surface-muted)] p-3 text-sm">
             <p className="font-medium">
-              {activeStop.stop_number ? `${activeStop.stop_number}. ` : ''}
-              {activeStop.title}
+              {selectedPoi.stop_number ? `${selectedPoi.stop_number}. ` : ''}
+              {selectedPoi.title}
             </p>
-            {activeStop.description ? <p className="mt-1 text-black/70">{activeStop.description}</p> : null}
-            <div className="mt-3 flex gap-2">
-              <button
-                type="button"
-                disabled={activeIndex <= 0}
-                onClick={() => setActiveIndex((i) => Math.max(i - 1, 0))}
-                className="rounded border border-black/15 px-2 py-1 text-xs disabled:opacity-50"
-              >
-                Previous
-              </button>
-              <button
-                type="button"
-                disabled={activeIndex >= stops.length - 1}
-                onClick={() => setActiveIndex((i) => Math.min(i + 1, stops.length - 1))}
-                className="rounded border border-black/15 px-2 py-1 text-xs disabled:opacity-50"
-              >
-                Next
-              </button>
-            </div>
+            {selectedPoi.description ? <p className="mt-1 text-black/70">{selectedPoi.description}</p> : null}
+            {uiMode === 'guided' ? (
+              <div className="mt-3 flex gap-2">
+                <button
+                  type="button"
+                  disabled={activeIndex <= 0}
+                  onClick={() => setActiveIndex((i) => Math.max(i - 1, 0))}
+                  className="rounded border border-black/15 px-2 py-1 text-xs disabled:opacity-50"
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  disabled={activeIndex >= stops.length - 1}
+                  onClick={() => setActiveIndex((i) => Math.min(i + 1, stops.length - 1))}
+                  className="rounded border border-black/15 px-2 py-1 text-xs disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+            ) : null}
           </div>
         ) : null}
 
-        <div className="mt-3 space-y-2">
-          {stops.map((stop, index) => (
-            <button
-              key={stop.id}
-              type="button"
-              onClick={() => {
-                setActiveIndex(index);
-                setUiMode(displayMode === 'guided_only' ? 'guided' : uiMode);
-              }}
-              className={`w-full rounded-lg border px-3 py-2 text-left text-sm ${
-                index === activeIndex ? 'border-[var(--brand)] bg-[var(--surface-muted)]' : 'border-black/10'
-              }`}
-            >
-              <p className="font-medium">
-                {stop.stop_number ? `${stop.stop_number}. ` : ''}
-                {stop.title}
-              </p>
-            </button>
+        <div className="mt-3 space-y-3">
+          {groupedByCategory.map((group) => (
+            <section key={group.key} className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-semibold uppercase tracking-[0.07em] text-black/60">{group.label}</h3>
+                <span className="text-[11px] text-black/45">{group.items.length}</span>
+              </div>
+              <div className="space-y-1.5">
+                {group.items.map((stop) => {
+                  const selected = selectedPoi?.id === stop.id;
+                  return (
+                    <button
+                      key={stop.id}
+                      type="button"
+                      onClick={() => {
+                        const idx = stops.findIndex((poi) => poi.id === stop.id);
+                        if (idx >= 0) setActiveIndex(idx);
+                        setSelectedPoiId(stop.id);
+                        if (displayMode === 'guided_only') setUiMode('guided');
+                      }}
+                      className={`w-full rounded-lg border px-3 py-2 text-left text-sm ${
+                        selected ? 'border-[var(--brand)] bg-[var(--surface-muted)]' : 'border-black/10'
+                      }`}
+                    >
+                      <p className="font-medium">
+                        {stop.stop_number ? `${stop.stop_number}. ` : ''}
+                        {stop.title}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
           ))}
         </div>
       </aside>
