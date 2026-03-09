@@ -30,7 +30,7 @@ export default async function MapPreviewPage({ params }: { params: Promise<{ id:
 
   const { data: pois } = await db
     .from('pois')
-    .select('id, title, description, latitude, longitude, stop_number, status')
+    .select('id, title, description, latitude, longitude, stop_number, status, category_id, pin_color, categories:category_id(id, name, icon, color)')
     .eq('map_id', map.id)
     .neq('status', 'archived')
     .order('stop_number', { ascending: true, nullsFirst: false })
@@ -67,6 +67,7 @@ export default async function MapPreviewPage({ params }: { params: Promise<{ id:
         displayMode={map.display_mode}
         center={{ lat: map.default_center_lat, lng: map.default_center_lng }}
         zoom={map.default_zoom ?? 16}
+        themePreset={map.theme_preset}
         pois={(pois ?? []).map((poi) => ({
           id: poi.id,
           title: poi.title,
@@ -74,6 +75,9 @@ export default async function MapPreviewPage({ params }: { params: Promise<{ id:
           latitude: poi.latitude,
           longitude: poi.longitude,
           stop_number: poi.stop_number,
+          category_id: poi.category_id,
+          pin_color: poi.pin_color,
+          categories: poi.categories,
         }))}
         routeConnections={routeConnections ?? []}
       />

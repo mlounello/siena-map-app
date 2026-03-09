@@ -3,11 +3,12 @@ import { badRequest, forbidden, ok, serverError, unauthorized } from '@/lib/api/
 import { requireRole } from '@/lib/auth/roles';
 import { createDbClient } from '@/lib/supabase/server';
 import { canEditMap } from '@/lib/auth/access';
+import { hasMinRole } from '@/lib/siena/permissions';
 import type { MapRecord } from '@/types/siena-maps';
 
 const schema = z.object({
   scheduled_publish_at: z.string().datetime().nullable().optional(),
-  status: z.enum(['published', 'unpublished']).default('published'),
+  status: z.enum(['published', 'unpublished', 'archived']).default('published'),
 });
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -30,21 +31,26 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   if (readError) return serverError(readError.message);
   if (!current) return badRequest('Map not found');
-  if (current.shell_status !== 'approved') {
+  const isElevatedPublisher = hasMinRole(profile.role, 'super_admin');
+  if (current.shell_status !== 'approved' && !isElevatedPublisher) {
     return badRequest('Map shell must be approved before publishing');
   }
 
   const now = new Date().toISOString();
   const nextStatus = parsed.data.status;
   const publishAt = parsed.data.scheduled_publish_at ?? (nextStatus === 'published' ? now : null);
+  const shellStatus = nextStatus === 'archived' ? 'archived' : current.shell_status === 'approved' ? 'approved' : 'approved';
 
   const { data, error } = await db
     .from('maps')
     .update({
+      shell_status: shellStatus,
       publication_status: nextStatus,
       published_at: nextStatus === 'published' ? publishAt : null,
       scheduled_publish_at: parsed.data.scheduled_publish_at ?? null,
       published_by: nextStatus === 'published' ? profile.id : null,
+      approved_at: shellStatus === 'approved' ? now : null,
+      approved_by: shellStatus === 'approved' ? profile.id : null,
       updated_by: profile.id,
     })
     .eq('id', id)

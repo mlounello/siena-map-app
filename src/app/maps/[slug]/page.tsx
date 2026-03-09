@@ -19,7 +19,7 @@ export default async function PublicMapPage({ params }: { params: Promise<{ slug
 
   const { data: pois } = await db
     .from('pois')
-    .select('id, title, description, latitude, longitude, stop_number')
+    .select('id, title, description, latitude, longitude, stop_number, category_id, pin_color, categories:category_id(id, name, icon, color)')
     .eq('map_id', map.id)
     .eq('status', 'published')
     .order('stop_number', { ascending: true, nullsFirst: false })
@@ -50,6 +50,7 @@ export default async function PublicMapPage({ params }: { params: Promise<{ slug
         displayMode={map.display_mode}
         center={{ lat: map.default_center_lat, lng: map.default_center_lng }}
         zoom={map.default_zoom ?? 16}
+        themePreset={map.theme_preset}
         pois={pois ?? []}
         routeConnections={routeConnections ?? []}
       />

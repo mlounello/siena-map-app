@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/siena';
 import { FormField, SelectInput, TextInput } from '@/components/ui/form-controls';
 import { LoadingInline } from '@/components/ui/loading';
+import { MAP_TILE_PRESETS } from '@/lib/map/base-layers';
 
 type MapItem = {
   id: string;
@@ -60,6 +61,10 @@ export default function MapsPage() {
     primary_department_id: '',
     visibility: 'internal_only',
     display_mode: 'both',
+    default_center_lat: '42.7167',
+    default_center_lng: '-73.7519',
+    default_zoom: '16',
+    theme_preset: 'streets',
   });
 
   async function load() {
@@ -89,10 +94,17 @@ export default function MapsPage() {
     e.preventDefault();
     setMessage('');
 
+    const payload = {
+      ...createForm,
+      default_center_lat: createForm.default_center_lat === '' ? null : Number(createForm.default_center_lat),
+      default_center_lng: createForm.default_center_lng === '' ? null : Number(createForm.default_center_lng),
+      default_zoom: Number(createForm.default_zoom) || 16,
+    };
+
     const res = await fetch('/api/maps', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(createForm),
+      body: JSON.stringify(payload),
     });
     const json = await res.json();
 
@@ -101,7 +113,17 @@ export default function MapsPage() {
       return;
     }
 
-    setCreateForm({ title: '', slug: '', primary_department_id: '', visibility: 'internal_only', display_mode: 'both' });
+    setCreateForm({
+      title: '',
+      slug: '',
+      primary_department_id: '',
+      visibility: 'internal_only',
+      display_mode: 'both',
+      default_center_lat: '42.7167',
+      default_center_lng: '-73.7519',
+      default_zoom: '16',
+      theme_preset: 'streets',
+    });
     await load();
     setMessage('Map shell created successfully.');
   }
@@ -164,6 +186,38 @@ export default function MapsPage() {
                   <option value="internal_only">Internal only</option>
                   <option value="unlisted">Unlisted</option>
                   <option value="public">Public</option>
+                </SelectInput>
+              </FormField>
+            </div>
+            <div className="form-row md:grid-cols-4">
+              <FormField label="Default center latitude">
+                <TextInput
+                  value={createForm.default_center_lat}
+                  onChange={(e) => setCreateForm((p) => ({ ...p, default_center_lat: e.target.value }))}
+                />
+              </FormField>
+              <FormField label="Default center longitude">
+                <TextInput
+                  value={createForm.default_center_lng}
+                  onChange={(e) => setCreateForm((p) => ({ ...p, default_center_lng: e.target.value }))}
+                />
+              </FormField>
+              <FormField label="Default zoom">
+                <TextInput
+                  value={createForm.default_zoom}
+                  onChange={(e) => setCreateForm((p) => ({ ...p, default_zoom: e.target.value }))}
+                />
+              </FormField>
+              <FormField label="Map style">
+                <SelectInput
+                  value={createForm.theme_preset}
+                  onChange={(e) => setCreateForm((p) => ({ ...p, theme_preset: e.target.value }))}
+                >
+                  {MAP_TILE_PRESETS.map((preset) => (
+                    <option key={preset.key} value={preset.key}>
+                      {preset.label}
+                    </option>
+                  ))}
                 </SelectInput>
               </FormField>
             </div>

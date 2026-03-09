@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { MapContainer, Marker, Popup, Polyline, TileLayer, useMap } from 'react-leaflet';
 import type { LatLngExpression } from 'leaflet';
+import { getPinColor, getPinSymbol } from '@/lib/map/pins';
+import { resolveTilePreset } from '@/lib/map/base-layers';
 
 type Poi = {
   id: string;
@@ -11,6 +13,22 @@ type Poi = {
   stop_number: number | null;
   latitude: number | string;
   longitude: number | string;
+  category_id?: string | null;
+  pin_color?: string | null;
+  categories?:
+    | {
+        id?: string;
+        name?: string | null;
+        icon?: string | null;
+        color?: string | null;
+      }
+    | Array<{
+        id?: string;
+        name?: string | null;
+        icon?: string | null;
+        color?: string | null;
+      }>
+    | null;
 };
 
 type RouteConnection = {
@@ -35,12 +53,14 @@ export function PublicLeafletMap({
   displayMode,
   center,
   zoom,
+  themePreset,
   pois,
   routeConnections,
 }: {
   displayMode: 'explore_only' | 'guided_only' | 'both';
   center: { lat: number | string | null; lng: number | string | null };
   zoom: number;
+  themePreset?: string | null;
   pois: Poi[];
   routeConnections?: RouteConnection[];
 }) {
@@ -48,15 +68,11 @@ export function PublicLeafletMap({
     displayMode === 'guided_only' ? 'guided' : 'explore'
   );
   const [activeIndex, setActiveIndex] = useState(0);
+  const [leafletModule, setLeafletModule] = useState<typeof import('leaflet') | null>(null);
+  const markerIconCache = useRef<Map<string, any>>(new Map());
 
   useEffect(() => {
-    void import('leaflet').then((L) => {
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-      });
-    });
+    void import('leaflet').then((L) => setLeafletModule(L));
   }, []);
 
   const normalizedPois = useMemo(
@@ -111,39 +127,71 @@ export function PublicLeafletMap({
 
   const activeStop = stops[activeIndex] ?? null;
   const guidedLine = stops.map((stop) => [stop.latitude, stop.longitude] as [number, number]);
+  const tilePreset = resolveTilePreset(themePreset);
+
+  function getMarkerIcon(poi: Poi) {
+    if (!leafletModule) return undefined;
+
+    const category = Array.isArray(poi.categories) ? poi.categories[0] : poi.categories;
+    const iconKey = category?.icon ?? null;
+    const categoryColor = category?.color ?? null;
+    const color = getPinColor(poi.pin_color, categoryColor);
+    const symbol = getPinSymbol(iconKey);
+    const cacheKey = `${color}|${symbol}`;
+
+    if (markerIconCache.current.has(cacheKey)) {
+      return markerIconCache.current.get(cacheKey);
+    }
+
+    const icon = leafletModule.divIcon({
+      className: 'siena-pin-marker',
+      html: `<div class="siena-pin" style="--pin-color:${color}"><span class="siena-pin-symbol">${symbol}</span></div>`,
+      iconSize: [30, 40],
+      iconAnchor: [15, 38],
+      popupAnchor: [0, -32],
+    });
+
+    markerIconCache.current.set(cacheKey, icon);
+    return icon;
+  }
 
   return (
     <section className="grid gap-4 lg:grid-cols-[2fr_1fr]">
       <div className="overflow-hidden rounded-xl border border-black/10 bg-white">
         <div className="flex items-center justify-between border-b border-black/10 px-4 py-3">
           <p className="text-sm font-medium">Interactive Map</p>
-          {displayMode === 'both' ? (
-            <div className="inline-flex rounded-md border border-black/15 p-1 text-xs">
-              <button
-                type="button"
-                onClick={() => setUiMode('explore')}
-                className={`rounded px-2 py-1 ${uiMode === 'explore' ? 'bg-[var(--brand)] text-white' : ''}`}
-              >
-                Explore
-              </button>
-              <button
-                type="button"
-                onClick={() => setUiMode('guided')}
-                className={`rounded px-2 py-1 ${uiMode === 'guided' ? 'bg-[var(--brand)] text-white' : ''}`}
-              >
-                Guided
-              </button>
-            </div>
-          ) : (
-            <p className="text-xs text-black/65">{displayMode === 'guided_only' ? 'Guided Tour' : 'Explore'}</p>
-          )}
+          <div className="flex items-center gap-3">
+            <p className="text-xs text-black/65">{tilePreset.label}</p>
+            {displayMode === 'both' ? (
+              <div className="inline-flex rounded-md border border-black/15 p-1 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setUiMode('explore')}
+                  className={`rounded px-2 py-1 ${uiMode === 'explore' ? 'bg-[var(--brand)] text-white' : ''}`}
+                >
+                  Explore
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUiMode('guided')}
+                  className={`rounded px-2 py-1 ${uiMode === 'guided' ? 'bg-[var(--brand)] text-white' : ''}`}
+                >
+                  Guided
+                </button>
+              </div>
+            ) : (
+              <p className="text-xs text-black/65">{displayMode === 'guided_only' ? 'Guided Tour' : 'Explore'}</p>
+            )}
+          </div>
         </div>
 
         <div className="h-[460px] w-full">
           <MapContainer center={centerPoint} zoom={zoom || 16} className="h-full w-full" scrollWheelZoom>
             <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution={tilePreset.attribution}
+              url={tilePreset.url}
+              maxZoom={tilePreset.maxZoom}
+              subdomains={tilePreset.subdomains as any}
             />
 
             {explicitRoutes.length > 0
@@ -164,10 +212,14 @@ export function PublicLeafletMap({
               <Marker
                 key={poi.id}
                 position={[poi.latitude, poi.longitude]}
+                icon={getMarkerIcon(poi)}
                 eventHandlers={{ click: () => setActiveIndex(index) }}
               >
                 <Popup>
                   <p className="font-semibold">{poi.title}</p>
+                  {(Array.isArray(poi.categories) ? poi.categories[0]?.name : poi.categories?.name) ? (
+                    <p className="mt-1 text-xs text-black/65">{Array.isArray(poi.categories) ? poi.categories[0]?.name : poi.categories?.name}</p>
+                  ) : null}
                   {poi.description ? <p className="mt-1 text-sm">{poi.description}</p> : null}
                 </Popup>
               </Marker>

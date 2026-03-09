@@ -18,6 +18,8 @@
   --card: #ffffff;
   --card-subtle: #fcfbf8;
   --muted: #f1ede7;
+  --surface-subtle: #fcfbf8;
+  --surface-muted: #f1ede7;
   --muted-foreground: #6c6a64;
 
   --border: #dad3cb;
@@ -489,6 +491,44 @@ p {
   border-radius: calc(var(--radius) + 0.06rem);
   background: var(--card-subtle);
   padding: 0.86rem;
+}
+
+.siena-pin-marker {
+  background: transparent !important;
+  border: 0 !important;
+}
+
+.siena-pin {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--pin-color, #006b54);
+  border: 2px solid #fff;
+  box-shadow: 0 6px 14px rgba(15, 42, 32, 0.25);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.siena-pin::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  width: 12px;
+  height: 12px;
+  transform: translateX(-50%) rotate(45deg);
+  background: var(--pin-color, #006b54);
+  border-right: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+}
+
+.siena-pin-symbol {
+  position: relative;
+  z-index: 2;
 }
 
 @keyframes skeleton-wave {

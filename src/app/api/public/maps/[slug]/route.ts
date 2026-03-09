@@ -19,7 +19,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ slug: stri
   const [poisResult, routesResult] = await Promise.all([
     db
       .from('pois')
-      .select('id, title, description, latitude, longitude, stop_number, category_id, pin_color')
+      .select('id, title, description, latitude, longitude, stop_number, category_id, pin_color, categories:category_id(id, name, icon, color)')
       .eq('map_id', map.id)
       .eq('status', 'published')
       .order('stop_number', { ascending: true, nullsFirst: false })

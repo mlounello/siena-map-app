@@ -2,6 +2,7 @@ import { badRequest, ok, serverError, unauthorized } from '@/lib/api/http';
 import { requireRole } from '@/lib/auth/roles';
 import { createDbClient } from '@/lib/supabase/server';
 import { canTransitionMapShell } from '@/lib/siena/workflows';
+import { hasMinRole } from '@/lib/siena/permissions';
 import type { MapRecord } from '@/types/siena-maps';
 
 export async function POST(_: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -24,9 +25,18 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
   }
 
   const now = new Date().toISOString();
+  const autoPublish = hasMinRole(profile.role, 'super_admin');
   const { data, error } = await db
     .from('maps')
-    .update({ shell_status: 'approved', approved_at: now, approved_by: profile.id, updated_by: profile.id })
+    .update({
+      shell_status: 'approved',
+      approved_at: now,
+      approved_by: profile.id,
+      publication_status: autoPublish ? 'published' : undefined,
+      published_at: autoPublish ? now : undefined,
+      published_by: autoPublish ? profile.id : undefined,
+      updated_by: profile.id,
+    })
     .eq('id', id)
     .select('*')
     .single();
@@ -43,5 +53,5 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
   });
   if (reviewError) return serverError(reviewError.message);
 
-  return ok({ map: data as MapRecord });
+  return ok({ map: data as MapRecord, autoPublished: autoPublish });
 }

@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/siena';
 import { FormField, SelectInput, TextArea, TextInput } from '@/components/ui/form-controls';
 import { LoadingInline } from '@/components/ui/loading';
+import { MAP_TILE_PRESETS } from '@/lib/map/base-layers';
 
 type MapDetail = {
   id: string;
@@ -23,6 +24,10 @@ type MapDetail = {
   intro_text: string | null;
   visibility: 'public' | 'unlisted' | 'internal_only';
   display_mode: 'explore_only' | 'guided_only' | 'both';
+  default_center_lat: number | null;
+  default_center_lng: number | null;
+  default_zoom: number;
+  theme_preset: string | null;
   shell_status: string;
   publication_status: string;
 };
@@ -57,6 +62,10 @@ export default function MapDetailPage() {
         intro_text: map.intro_text,
         visibility: map.visibility,
         display_mode: map.display_mode,
+        default_center_lat: map.default_center_lat,
+        default_center_lng: map.default_center_lng,
+        default_zoom: map.default_zoom,
+        theme_preset: map.theme_preset,
       }),
     });
 
@@ -66,11 +75,12 @@ export default function MapDetailPage() {
     setMessage('Map settings saved.');
   }
 
-  async function runAction(action: 'submit' | 'approve' | 'reject' | 'publish') {
+  async function runAction(action: 'submit' | 'approve' | 'reject' | 'publish' | 'archive') {
     if (!map) return;
-    const body = action === 'publish' ? { status: 'published' } : {};
+    const endpoint = action === 'archive' ? 'publish' : action;
+    const body = action === 'publish' ? { status: 'published' } : action === 'archive' ? { status: 'archived' } : {};
 
-    const res = await fetch(`/api/maps/${map.id}/${action}`, {
+    const res = await fetch(`/api/maps/${map.id}/${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -151,6 +161,51 @@ export default function MapDetailPage() {
             </FormField>
           </div>
 
+          <div className="form-row md:grid-cols-4">
+            <FormField label="Default center latitude">
+              <TextInput
+                value={map.default_center_lat ?? ''}
+                onChange={(e) =>
+                  setMap((p) =>
+                    p
+                      ? { ...p, default_center_lat: e.target.value === '' ? null : Number(e.target.value) }
+                      : p
+                  )
+                }
+              />
+            </FormField>
+            <FormField label="Default center longitude">
+              <TextInput
+                value={map.default_center_lng ?? ''}
+                onChange={(e) =>
+                  setMap((p) =>
+                    p
+                      ? { ...p, default_center_lng: e.target.value === '' ? null : Number(e.target.value) }
+                      : p
+                  )
+                }
+              />
+            </FormField>
+            <FormField label="Default zoom">
+              <TextInput
+                value={map.default_zoom}
+                onChange={(e) => setMap((p) => (p ? { ...p, default_zoom: Number(e.target.value) || 16 } : p))}
+              />
+            </FormField>
+            <FormField label="Map style">
+              <SelectInput
+                value={map.theme_preset ?? 'streets'}
+                onChange={(e) => setMap((p) => (p ? { ...p, theme_preset: e.target.value } : p))}
+              >
+                {MAP_TILE_PRESETS.map((preset) => (
+                  <option key={preset.key} value={preset.key}>
+                    {preset.label}
+                  </option>
+                ))}
+              </SelectInput>
+            </FormField>
+          </div>
+
           <FormField label="Intro text">
             <TextArea
               rows={4}
@@ -194,6 +249,7 @@ export default function MapDetailPage() {
           <Button variant="secondary" onClick={() => runAction('approve')}>Approve</Button>
           <Button variant="danger" onClick={() => runAction('reject')}>Reject</Button>
           <Button onClick={() => runAction('publish')}>Publish</Button>
+          <Button variant="danger" onClick={() => runAction('archive')}>Archive</Button>
         </ActionBar>
       </SectionCard>
 

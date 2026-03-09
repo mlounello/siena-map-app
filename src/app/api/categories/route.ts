@@ -20,13 +20,15 @@ const updateSchema = z.object({
   is_active: z.boolean().optional(),
 });
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const includeInactive = searchParams.get('includeInactive') === '1';
+
   const { db } = await createDbClient();
-  const { data, error } = await db
-    .from('categories')
-    .select('*')
-    .eq('is_active', true)
-    .order('name', { ascending: true });
+  let query = db.from('categories').select('*').order('name', { ascending: true });
+  if (!includeInactive) query = query.eq('is_active', true);
+
+  const { data, error } = await query;
 
   if (error) return serverError(error.message);
   return ok({ categories: (data ?? []) as Category[] });

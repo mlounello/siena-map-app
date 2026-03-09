@@ -9,6 +9,22 @@ type Poi = {
   stop_number: number | null;
   latitude: number | string;
   longitude: number | string;
+  category_id?: string | null;
+  pin_color?: string | null;
+  categories?:
+    | {
+        id?: string;
+        name?: string | null;
+        icon?: string | null;
+        color?: string | null;
+      }
+    | Array<{
+    id?: string;
+    name?: string | null;
+    icon?: string | null;
+    color?: string | null;
+      }>
+    | null;
 };
 
 type RouteConnection = {
@@ -24,12 +40,14 @@ export function PublicMapShell({
   displayMode,
   center,
   zoom,
+  themePreset,
   pois,
   routeConnections,
 }: {
   displayMode: 'explore_only' | 'guided_only' | 'both';
   center: { lat: number | string | null; lng: number | string | null };
   zoom: number;
+  themePreset?: string | null;
   pois: Poi[];
   routeConnections?: RouteConnection[];
 }) {
@@ -38,6 +56,7 @@ export function PublicMapShell({
       displayMode={displayMode}
       center={center}
       zoom={zoom}
+      themePreset={themePreset}
       pois={pois}
       routeConnections={routeConnections}
     />

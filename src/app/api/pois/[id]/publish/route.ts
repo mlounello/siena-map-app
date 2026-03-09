@@ -3,10 +3,11 @@ import { badRequest, ok, serverError, unauthorized } from '@/lib/api/http';
 import { requireRole } from '@/lib/auth/roles';
 import { createDbClient } from '@/lib/supabase/server';
 import { canTransitionPoi } from '@/lib/siena/workflows';
+import { hasMinRole } from '@/lib/siena/permissions';
 import type { Poi } from '@/types/siena-maps';
 
 const schema = z.object({
-  status: z.enum(['published', 'approved']).default('published'),
+  status: z.enum(['published', 'approved', 'archived']).default('published'),
   scheduled_publish_at: z.string().datetime().nullable().optional(),
 });
 
@@ -30,8 +31,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!current) return badRequest('POI not found');
 
   const nextStatus = parsed.data.status;
-  if (nextStatus === 'published' && !canTransitionPoi(current.status, 'published', profile.role)) {
+  const isElevated = hasMinRole(profile.role, 'super_admin');
+  if (nextStatus === 'published' && !isElevated && !canTransitionPoi(current.status, 'published', profile.role)) {
     return badRequest('Invalid POI transition to published');
+  }
+  if (nextStatus === 'approved' && !isElevated && !canTransitionPoi(current.status, 'approved', profile.role)) {
+    return badRequest('Invalid POI transition to approved');
   }
 
   const now = new Date().toISOString();
@@ -44,6 +49,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       published_at: nextStatus === 'published' ? publishAt : null,
       published_by: nextStatus === 'published' ? profile.id : null,
       scheduled_publish_at: parsed.data.scheduled_publish_at ?? null,
+      approved_at: nextStatus === 'published' || nextStatus === 'approved' ? now : null,
+      approved_by: nextStatus === 'published' || nextStatus === 'approved' ? profile.id : null,
       updated_by: profile.id,
     })
     .eq('id', id)

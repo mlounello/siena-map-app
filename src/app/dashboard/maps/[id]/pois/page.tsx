@@ -19,7 +19,7 @@ type Poi = {
   stop_number: number | null;
 };
 
-type Category = { id: string; name: string };
+type Category = { id: string; name: string; icon: string | null; color: string | null };
 type Department = { id: string; name: string };
 
 type MapRecord = {
@@ -27,6 +27,7 @@ type MapRecord = {
   default_center_lat: number | string | null;
   default_center_lng: number | string | null;
   default_zoom: number;
+  theme_preset: string | null;
   primary_department_id: string;
 };
 
@@ -54,7 +55,7 @@ export default function PoisPage() {
     longitude: '-73.7519',
     category_id: '',
     stop_number: '',
-    pin_color: '#006b54',
+    pin_color: '',
   });
 
   async function load(id: string) {
@@ -152,9 +153,10 @@ export default function PoisPage() {
     await load(mapId);
   }
 
-  async function actionPoi(id: string, action: 'submit' | 'approve' | 'reject' | 'publish') {
-    const body = action === 'publish' ? { status: 'published' } : {};
-    const res = await fetch(`/api/pois/${id}/${action}`, {
+  async function actionPoi(id: string, action: 'submit' | 'approve' | 'reject' | 'publish' | 'archive') {
+    const endpoint = action === 'archive' ? 'publish' : action;
+    const body = action === 'publish' ? { status: 'published' } : action === 'archive' ? { status: 'archived' } : {};
+    const res = await fetch(`/api/pois/${id}/${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -183,7 +185,9 @@ export default function PoisPage() {
             <InternalBuilderMap
               center={builderCenter}
               zoom={mapRecord?.default_zoom ?? 16}
+              themePreset={mapRecord?.theme_preset ?? 'streets'}
               pois={pois}
+              categories={categories}
               draftLat={Number(form.latitude)}
               draftLng={Number(form.longitude)}
               onPick={(lat, lng) => setForm((p) => ({ ...p, latitude: lat.toFixed(6), longitude: lng.toFixed(6) }))}
@@ -256,6 +260,7 @@ export default function PoisPage() {
                     <Button variant="secondary" onClick={() => actionPoi(poi.id, 'approve')}>Approve</Button>
                     <Button variant="danger" onClick={() => actionPoi(poi.id, 'reject')}>Reject</Button>
                     <Button onClick={() => actionPoi(poi.id, 'publish')}>Publish</Button>
+                    <Button variant="danger" onClick={() => actionPoi(poi.id, 'archive')}>Archive</Button>
                   </div>
                 </div>
                 {poi.description ? <p className="mt-2 text-sm text-black/75">{poi.description}</p> : null}

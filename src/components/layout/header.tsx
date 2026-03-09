@@ -145,7 +145,19 @@ export function Header() {
   const activeKey = activeNavKey(pathname);
 
   if (!inApp) {
-    const rightAction = pathname === '/login' ? { href: '/maps', label: 'Public Maps' } : { href: '/login', label: user ? 'Dashboard' : 'Sign In' };
+    const roleKey = user?.profile?.role ?? null;
+    const internalLabel =
+      roleKey === 'editor'
+        ? 'Editor'
+        : roleKey === 'viewer'
+          ? 'Internal'
+          : roleKey
+            ? 'Admin'
+            : 'Sign In';
+    const rightAction =
+      pathname === '/login'
+        ? { href: '/maps', label: 'Public Maps' }
+        : { href: user ? '/dashboard/maps' : '/login', label: internalLabel };
 
     return (
       <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-gradient-to-r from-[var(--brand)] via-[var(--brand)] to-[var(--brand-dark)] text-white shadow-md">
