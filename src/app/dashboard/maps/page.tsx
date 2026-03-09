@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { Badge, Button, PageHeader, Panel } from '@/components/ui/siena';
 
 type MapItem = {
   id: string;
@@ -15,6 +16,19 @@ type MapItem = {
 };
 
 type Department = { id: string; name: string };
+
+function shellTone(status: string): 'neutral' | 'warning' | 'success' | 'danger' {
+  if (status === 'approved') return 'success';
+  if (status === 'submitted_for_review') return 'warning';
+  if (status === 'rejected') return 'danger';
+  return 'neutral';
+}
+
+function publicationTone(status: string): 'neutral' | 'warning' | 'success' {
+  if (status === 'published') return 'success';
+  if (status === 'unpublished') return 'warning';
+  return 'neutral';
+}
 
 export default function MapsPage() {
   const [maps, setMaps] = useState<MapItem[]>([]);
@@ -69,107 +83,77 @@ export default function MapsPage() {
       return;
     }
 
-    setCreateForm({
-      title: '',
-      slug: '',
-      primary_department_id: '',
-      visibility: 'internal_only',
-      display_mode: 'both',
-    });
+    setCreateForm({ title: '', slug: '', primary_department_id: '', visibility: 'internal_only', display_mode: 'both' });
     await load();
     setMessage('Map created.');
   }
 
   return (
     <section className="space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-3xl font-semibold tracking-tight text-[var(--brand)]">Maps Console</h1>
-        <p className="text-sm text-black/70">Create and manage map shells and publication status.</p>
-      </header>
+      <PageHeader
+        eyebrow="Map Governance"
+        title="Maps Console"
+        subtitle="Create map shells and manage approval/publication state."
+      />
 
-      <form onSubmit={createMap} className="grid gap-3 rounded-xl border border-black/10 bg-white p-4 md:grid-cols-5">
-        <input
-          className="rounded-md border border-black/15 px-3 py-2 text-sm"
-          placeholder="Title"
-          value={createForm.title}
-          onChange={(e) => setCreateForm((p) => ({ ...p, title: e.target.value }))}
-          required
-        />
-        <input
-          className="rounded-md border border-black/15 px-3 py-2 text-sm"
-          placeholder="Slug"
-          value={createForm.slug}
-          onChange={(e) => setCreateForm((p) => ({ ...p, slug: e.target.value }))}
-          required
-        />
-        <select
-          className="rounded-md border border-black/15 px-3 py-2 text-sm"
-          value={createForm.primary_department_id}
-          onChange={(e) => setCreateForm((p) => ({ ...p, primary_department_id: e.target.value }))}
-          required
-        >
-          <option value="">Primary department</option>
-          {departments.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.name}
-            </option>
-          ))}
-        </select>
-        <select
-          className="rounded-md border border-black/15 px-3 py-2 text-sm"
-          value={createForm.visibility}
-          onChange={(e) => setCreateForm((p) => ({ ...p, visibility: e.target.value }))}
-        >
-          <option value="internal_only">Internal</option>
-          <option value="unlisted">Unlisted</option>
-          <option value="public">Public</option>
-        </select>
-        <button className="rounded-md bg-[var(--brand)] px-3 py-2 text-sm font-medium text-white" type="submit">
-          Create Map
-        </button>
-      </form>
+      <Panel title="Create Map Shell" subtitle="Department heads and above can create shells.">
+        <form onSubmit={createMap} className="grid gap-3 md:grid-cols-5">
+          <input placeholder="Title" value={createForm.title} onChange={(e) => setCreateForm((p) => ({ ...p, title: e.target.value }))} required className="rounded-md border px-3 py-2 text-sm" />
+          <input placeholder="Slug" value={createForm.slug} onChange={(e) => setCreateForm((p) => ({ ...p, slug: e.target.value }))} required className="rounded-md border px-3 py-2 text-sm" />
+          <select value={createForm.primary_department_id} onChange={(e) => setCreateForm((p) => ({ ...p, primary_department_id: e.target.value }))} required className="rounded-md border px-3 py-2 text-sm">
+            <option value="">Primary department</option>
+            {departments.map((d) => (
+              <option key={d.id} value={d.id}>{d.name}</option>
+            ))}
+          </select>
+          <select value={createForm.visibility} onChange={(e) => setCreateForm((p) => ({ ...p, visibility: e.target.value }))} className="rounded-md border px-3 py-2 text-sm">
+            <option value="internal_only">Internal</option>
+            <option value="unlisted">Unlisted</option>
+            <option value="public">Public</option>
+          </select>
+          <Button type="submit">Create</Button>
+        </form>
+      </Panel>
 
-      {message ? <p className="text-sm text-[var(--brand)]">{message}</p> : null}
+      {message ? <p className="siena-subtitle text-[var(--brand)]">{message}</p> : null}
 
-      <div className="overflow-hidden rounded-xl border border-black/10 bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-[var(--surface-muted)] text-xs uppercase tracking-wide text-black/70">
-            <tr>
-              <th className="px-4 py-3">Title</th>
-              <th className="px-4 py-3">Department</th>
-              <th className="px-4 py-3">Shell</th>
-              <th className="px-4 py-3">Publish</th>
-              <th className="px-4 py-3">Visibility</th>
-              <th className="px-4 py-3">Updated</th>
-            </tr>
-          </thead>
-          <tbody>
-            {!loading && maps.length === 0 ? (
+      <Panel title="Map Inventory" subtitle="Every map with shell and publication status.">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="text-xs uppercase tracking-[0.08em] text-black/60">
               <tr>
-                <td className="px-4 py-4 text-black/60" colSpan={6}>
-                  No maps yet.
-                </td>
+                <th className="px-3 py-2">Title</th>
+                <th className="px-3 py-2">Department</th>
+                <th className="px-3 py-2">Shell</th>
+                <th className="px-3 py-2">Publish</th>
+                <th className="px-3 py-2">Visibility</th>
+                <th className="px-3 py-2">Updated</th>
               </tr>
-            ) : (
-              maps.map((map) => (
-                <tr key={map.id} className="border-t border-black/10">
-                  <td className="px-4 py-3">
-                    <Link href={`/dashboard/maps/${map.id}`} className="font-medium text-[var(--brand)] hover:underline">
-                      {map.title}
-                    </Link>
-                    <p className="text-xs text-black/60">/{map.slug}</p>
-                  </td>
-                  <td className="px-4 py-3">{departmentNameById[map.primary_department_id] ?? 'Unknown'}</td>
-                  <td className="px-4 py-3">{map.shell_status}</td>
-                  <td className="px-4 py-3">{map.publication_status}</td>
-                  <td className="px-4 py-3">{map.visibility}</td>
-                  <td className="px-4 py-3">{new Date(map.updated_at).toLocaleString()}</td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {!loading && maps.length === 0 ? (
+                <tr><td className="px-3 py-4 text-black/60" colSpan={6}>No maps yet.</td></tr>
+              ) : (
+                maps.map((map) => (
+                  <tr key={map.id} className="border-t border-black/10">
+                    <td className="px-3 py-3">
+                      <Link href={`/dashboard/maps/${map.id}`} className="font-semibold text-[var(--brand-dark)] hover:underline">
+                        {map.title}
+                      </Link>
+                      <p className="text-xs text-black/55">/{map.slug}</p>
+                    </td>
+                    <td className="px-3 py-3">{departmentNameById[map.primary_department_id] ?? 'Unknown'}</td>
+                    <td className="px-3 py-3"><Badge label={map.shell_status.replaceAll('_', ' ')} tone={shellTone(map.shell_status)} /></td>
+                    <td className="px-3 py-3"><Badge label={map.publication_status} tone={publicationTone(map.publication_status)} /></td>
+                    <td className="px-3 py-3">{map.visibility}</td>
+                    <td className="px-3 py-3 text-xs">{new Date(map.updated_at).toLocaleString()}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
     </section>
   );
 }

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { Badge, Button, PageHeader, Panel, Toolbar } from '@/components/ui/siena';
 
 type MapDetail = {
   id: string;
@@ -49,104 +50,79 @@ export default function MapDetailPage() {
     });
 
     const json = await res.json();
-    if (!res.ok) {
-      setMessage(json.error ?? 'Failed to save map');
-      return;
-    }
-
+    if (!res.ok) return setMessage(json.error ?? 'Failed to save map');
     setMap(json.map);
-    setMessage('Saved.');
+    setMessage('Saved map settings.');
   }
 
   async function runAction(action: 'submit' | 'approve' | 'reject' | 'publish') {
     if (!map) return;
-
     const body = action === 'publish' ? { status: 'published' } : {};
+
     const res = await fetch(`/api/maps/${map.id}/${action}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
+
     const json = await res.json();
+    if (!res.ok) return setMessage(json.error ?? `Failed to ${action}`);
 
-    if (!res.ok) {
-      setMessage(json.error ?? `Failed to ${action}`);
-      return;
-    }
-
-    setMap(json.map ?? map);
     setMessage(`Map ${action} complete.`);
     await load(map.id);
   }
 
-  if (!map) {
-    return <p className="text-sm text-black/70">Loading map…</p>;
-  }
+  if (!map) return <p className="siena-subtitle">Loading map…</p>;
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-3xl font-semibold tracking-tight text-[var(--brand)]">Map: {map.title}</h1>
-        <Link href={`/dashboard/maps/${map.id}/pois`} className="rounded-md border border-black/15 px-3 py-2 text-sm hover:bg-white">
-          Open POI Manager
-        </Link>
-      </div>
+      <PageHeader
+        eyebrow="Map Builder"
+        title={map.title}
+        subtitle={`Slug: /${map.slug}`}
+        actions={
+          <Link href={`/dashboard/maps/${map.id}/pois`}>
+            <Button variant="secondary">Open POI Manager</Button>
+          </Link>
+        }
+      />
 
-      <form onSubmit={saveBasics} className="grid gap-3 rounded-xl border border-black/10 bg-white p-4 md:grid-cols-2">
-        <input
-          className="rounded-md border border-black/15 px-3 py-2 text-sm"
-          value={map.title}
-          onChange={(e) => setMap((p) => (p ? { ...p, title: e.target.value } : p))}
-        />
-        <input
-          className="rounded-md border border-black/15 px-3 py-2 text-sm"
-          value={map.slug}
-          onChange={(e) => setMap((p) => (p ? { ...p, slug: e.target.value } : p))}
-        />
-        <textarea
-          className="rounded-md border border-black/15 px-3 py-2 text-sm md:col-span-2"
-          rows={4}
-          value={map.intro_text ?? ''}
-          onChange={(e) => setMap((p) => (p ? { ...p, intro_text: e.target.value } : p))}
-        />
-        <select
-          className="rounded-md border border-black/15 px-3 py-2 text-sm"
-          value={map.visibility}
-          onChange={(e) => setMap((p) => (p ? { ...p, visibility: e.target.value as MapDetail['visibility'] } : p))}
-        >
-          <option value="internal_only">Internal</option>
-          <option value="unlisted">Unlisted</option>
-          <option value="public">Public</option>
-        </select>
-        <select
-          className="rounded-md border border-black/15 px-3 py-2 text-sm"
-          value={map.display_mode}
-          onChange={(e) =>
-            setMap((p) => (p ? { ...p, display_mode: e.target.value as MapDetail['display_mode'] } : p))
-          }
-        >
-          <option value="both">Both</option>
-          <option value="explore_only">Explore only</option>
-          <option value="guided_only">Guided only</option>
-        </select>
-        <button className="rounded-md bg-[var(--brand)] px-3 py-2 text-sm font-medium text-white md:col-span-2" type="submit">
-          Save Map
-        </button>
-      </form>
+      <Panel title="Workflow State">
+        <Toolbar>
+          <Badge label={`Shell: ${map.shell_status.replaceAll('_', ' ')}`} tone={map.shell_status === 'approved' ? 'success' : map.shell_status === 'rejected' ? 'danger' : 'warning'} />
+          <Badge label={`Publication: ${map.publication_status}`} tone={map.publication_status === 'published' ? 'success' : 'warning'} />
+        </Toolbar>
+      </Panel>
 
-      <div className="rounded-xl border border-black/10 bg-white p-4">
-        <p className="text-sm text-black/70">
-          Shell: <strong>{map.shell_status}</strong> | Publish: <strong>{map.publication_status}</strong>
-        </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <button onClick={() => runAction('submit')} className="rounded-md border border-black/15 px-3 py-2 text-sm">Submit</button>
-          <button onClick={() => runAction('approve')} className="rounded-md border border-black/15 px-3 py-2 text-sm">Approve</button>
-          <button onClick={() => runAction('reject')} className="rounded-md border border-black/15 px-3 py-2 text-sm">Reject</button>
-          <button onClick={() => runAction('publish')} className="rounded-md bg-[var(--brand)] px-3 py-2 text-sm text-white">Publish</button>
-        </div>
-      </div>
+      <Panel title="Map Settings">
+        <form onSubmit={saveBasics} className="grid gap-3 md:grid-cols-2">
+          <input value={map.title} onChange={(e) => setMap((p) => (p ? { ...p, title: e.target.value } : p))} className="rounded-md border px-3 py-2 text-sm" />
+          <input value={map.slug} onChange={(e) => setMap((p) => (p ? { ...p, slug: e.target.value } : p))} className="rounded-md border px-3 py-2 text-sm" />
+          <textarea rows={4} value={map.intro_text ?? ''} onChange={(e) => setMap((p) => (p ? { ...p, intro_text: e.target.value } : p))} className="rounded-md border px-3 py-2 text-sm md:col-span-2" />
+          <select value={map.visibility} onChange={(e) => setMap((p) => (p ? { ...p, visibility: e.target.value as MapDetail['visibility'] } : p))} className="rounded-md border px-3 py-2 text-sm">
+            <option value="internal_only">Internal</option>
+            <option value="unlisted">Unlisted</option>
+            <option value="public">Public</option>
+          </select>
+          <select value={map.display_mode} onChange={(e) => setMap((p) => (p ? { ...p, display_mode: e.target.value as MapDetail['display_mode'] } : p))} className="rounded-md border px-3 py-2 text-sm">
+            <option value="both">Both</option>
+            <option value="explore_only">Explore only</option>
+            <option value="guided_only">Guided only</option>
+          </select>
+          <Button type="submit" className="md:col-span-2">Save Settings</Button>
+        </form>
+      </Panel>
 
-      {message ? <p className="text-sm text-[var(--brand)]">{message}</p> : null}
+      <Panel title="Workflow Actions">
+        <Toolbar>
+          <Button variant="secondary" onClick={() => runAction('submit')}>Submit</Button>
+          <Button variant="secondary" onClick={() => runAction('approve')}>Approve</Button>
+          <Button variant="danger" onClick={() => runAction('reject')}>Reject</Button>
+          <Button onClick={() => runAction('publish')}>Publish</Button>
+        </Toolbar>
+      </Panel>
+
+      {message ? <p className="siena-subtitle text-[var(--brand)]">{message}</p> : null}
     </section>
   );
 }

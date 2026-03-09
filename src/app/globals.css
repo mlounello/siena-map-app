@@ -96,3 +96,144 @@ select:focus {
 button {
   font-family: var(--font-subhead);
 }
+
+.siena-eyebrow {
+  margin: 0;
+  font-family: var(--font-subhead);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--brand);
+}
+
+.siena-title {
+  margin: 0;
+  font-family: var(--font-headline);
+  font-size: clamp(1.6rem, 3.1vw, 2.35rem);
+  line-height: 1.1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--brand-dark);
+}
+
+.siena-subtitle {
+  margin: 0;
+  color: rgba(28, 43, 37, 0.82);
+  font-size: 0.95rem;
+}
+
+.siena-panel {
+  border: 1px solid rgba(27, 73, 50, 0.2);
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff 0%, #f9fcfb 100%);
+  box-shadow: 0 8px 24px rgba(27, 73, 50, 0.08);
+  padding: 1rem;
+}
+
+.siena-panel-title {
+  margin: 0;
+  font-family: var(--font-subhead);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brand-dark);
+}
+
+.siena-panel-subtitle {
+  margin: 0.35rem 0 0.8rem 0;
+  font-size: 0.82rem;
+  color: rgba(28, 43, 37, 0.75);
+}
+
+.siena-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.siena-btn {
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  padding: 0.52rem 0.78rem;
+  transition: all 0.18s ease;
+}
+
+.siena-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.siena-btn-primary {
+  background: linear-gradient(90deg, var(--brand) 0%, var(--brand-dark) 100%);
+  color: var(--brand-ink);
+}
+
+.siena-btn-primary:hover {
+  filter: brightness(1.05);
+}
+
+.siena-btn-secondary {
+  background: #ffffff;
+  color: var(--brand-dark);
+  border-color: rgba(27, 73, 50, 0.25);
+}
+
+.siena-btn-secondary:hover {
+  background: #f4faf8;
+}
+
+.siena-btn-ghost {
+  background: rgba(27, 73, 50, 0.08);
+  color: var(--brand-dark);
+  border-color: rgba(27, 73, 50, 0.15);
+}
+
+.siena-btn-danger {
+  background: rgba(176, 28, 46, 0.11);
+  color: var(--accent-red);
+  border-color: rgba(176, 28, 46, 0.24);
+}
+
+.siena-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.12rem 0.48rem;
+  font-family: var(--font-subhead);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.siena-badge-neutral {
+  background: rgba(27, 73, 50, 0.1);
+  color: var(--brand-dark);
+}
+
+.siena-badge-info {
+  background: rgba(0, 138, 177, 0.12);
+  color: var(--accent-blue);
+}
+
+.siena-badge-success {
+  background: rgba(13, 176, 43, 0.14);
+  color: var(--accent-green);
+}
+
+.siena-badge-warning {
+  background: rgba(252, 201, 23, 0.28);
+  color: #4e3c00;
+}
+
+.siena-badge-danger {
+  background: rgba(176, 28, 46, 0.14);
+  color: var(--accent-red);
+}
