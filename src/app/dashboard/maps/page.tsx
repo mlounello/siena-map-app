@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { ClipboardCheck, Globe2, Layers3, MapPinned } from 'lucide-react';
 import {
   AppShell,
   Badge,
@@ -174,23 +175,27 @@ export default function MapsPage() {
 
         <SectionCard title="Inventory Snapshot" subtitle="Current status mix across all maps.">
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-3.5">
+            <div className="surface-stat">
+              <MapPinned className="mb-1.5 h-4 w-4 text-[var(--brand)]" />
               <p className="row-meta">Total maps</p>
               <p className="mt-1 text-2xl font-semibold text-[var(--heading)]">{maps.length}</p>
             </div>
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-3.5">
+            <div className="surface-stat">
+              <Globe2 className="mb-1.5 h-4 w-4 text-[var(--accent-blue)]" />
               <p className="row-meta">Published</p>
               <p className="mt-1 text-2xl font-semibold text-[var(--heading)]">
                 {maps.filter((m) => m.publication_status === 'published').length}
               </p>
             </div>
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-3.5">
+            <div className="surface-stat">
+              <ClipboardCheck className="mb-1.5 h-4 w-4 text-[var(--brand-yellow)]" />
               <p className="row-meta">Pending shell review</p>
               <p className="mt-1 text-2xl font-semibold text-[var(--heading)]">
                 {maps.filter((m) => m.shell_status === 'submitted_for_review').length}
               </p>
             </div>
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-3.5">
+            <div className="surface-stat">
+              <Layers3 className="mb-1.5 h-4 w-4 text-[var(--brand-dark)]" />
               <p className="row-meta">Public / Unlisted</p>
               <p className="mt-1 text-2xl font-semibold text-[var(--heading)]">
                 {maps.filter((m) => m.visibility !== 'internal_only').length}

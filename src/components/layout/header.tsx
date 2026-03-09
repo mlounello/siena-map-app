@@ -3,7 +3,9 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Globe, LayoutDashboard, MapPinned, ShieldCheck, ChevronDown } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import type { ComponentType } from 'react';
 
 type HeaderUser = {
   email?: string | null;
@@ -11,6 +13,7 @@ type HeaderUser = {
     display_name?: string | null;
     email?: string | null;
     role?: string | null;
+    avatar_url?: string | null;
   } | null;
 };
 
@@ -18,13 +21,14 @@ type NavItem = {
   key: 'dashboard' | 'maps' | 'approvals' | 'public';
   label: string;
   href: string;
+  icon: ComponentType<{ className?: string }>;
 };
 
 const appNavItems: NavItem[] = [
-  { key: 'dashboard', label: 'Dashboard', href: '/dashboard' },
-  { key: 'maps', label: 'Maps', href: '/dashboard/maps' },
-  { key: 'approvals', label: 'Approvals', href: '/dashboard/review-queue' },
-  { key: 'public', label: 'Public', href: '/maps' },
+  { key: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { key: 'maps', label: 'Maps', href: '/dashboard/maps', icon: MapPinned },
+  { key: 'approvals', label: 'Approvals', href: '/dashboard/review-queue', icon: ShieldCheck },
+  { key: 'public', label: 'Public', href: '/maps', icon: Globe },
 ];
 
 function isAppRoute(pathname: string) {
@@ -37,18 +41,6 @@ function activeNavKey(pathname: string): NavItem['key'] | null {
   if (pathname === '/dashboard/review-queue' || pathname.startsWith('/dashboard/review-queue/')) return 'approvals';
   if (pathname === '/maps' || pathname.startsWith('/maps/')) return 'public';
   return null;
-}
-
-function navItemClass(isActive: boolean) {
-  return isActive
-    ? 'inline-flex h-10 items-center rounded-xl bg-white px-4 text-sm font-semibold text-[var(--brand-dark)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.5)]'
-    : 'inline-flex h-10 items-center rounded-xl px-4 text-sm font-medium text-white/88 transition hover:bg-white/14 hover:text-white';
-}
-
-function mobileNavItemClass(isActive: boolean) {
-  return isActive
-    ? 'inline-flex h-9 items-center rounded-lg bg-white px-3 text-xs font-semibold text-[var(--brand-dark)]'
-    : 'inline-flex h-9 items-center rounded-lg border border-white/24 bg-white/10 px-3 text-xs font-medium text-white/88 hover:bg-white/16';
 }
 
 function initialsFromUser(user: HeaderUser | null) {
@@ -66,23 +58,19 @@ function initialsFromUser(user: HeaderUser | null) {
 
 function BrandLockup({ compact = false }: { compact?: boolean }) {
   return (
-    <Link href="/" className="inline-flex min-w-0 items-center gap-3.5 rounded-lg py-1">
+    <Link href="/" className="inline-flex min-w-0 items-center gap-3 group">
       <span
-        className={`inline-flex items-center justify-center rounded-lg bg-[var(--brand-yellow)] font-bold tracking-[0.12em] text-[var(--brand-dark)] shadow-sm ${
-          compact ? 'h-9 w-9 text-[10px]' : 'h-11 w-11 text-[11px]'
+        className={`inline-flex items-center justify-center rounded-lg bg-[var(--brand-yellow)] font-bold text-[var(--brand-dark)] shadow-sm transition group-hover:scale-[1.02] ${
+          compact ? 'h-9 w-9 text-[10px] tracking-[0.12em]' : 'h-11 w-11 text-[11px] tracking-[0.13em]'
         }`}
       >
         SI
       </span>
       <span className="min-w-0 leading-tight">
-        <span
-          className={`block truncate font-semibold text-white ${
-            compact ? 'text-[1.01rem] tracking-[0.005em]' : 'text-[1.14rem] tracking-[0.005em]'
-          }`}
-        >
+        <span className={`block truncate font-semibold text-white ${compact ? 'text-[1.02rem]' : 'text-[1.22rem]'}`}>
           Siena Maps
         </span>
-        <span className={`block truncate text-white/74 ${compact ? 'text-[11px]' : 'text-[12px]'}`}>
+        <span className={`block truncate text-white/75 ${compact ? 'text-[10px]' : 'text-[11px] tracking-[0.03em]'}`}>
           Publishing Platform
         </span>
       </span>
@@ -101,6 +89,7 @@ export function Header() {
 
   useEffect(() => {
     let cancelled = false;
+
     void fetch('/api/auth/check', { cache: 'no-store' })
       .then((res) => res.json())
       .then((json) => {
@@ -108,7 +97,7 @@ export function Header() {
         setUser({ email: json.user?.email, profile: json.profile ?? null });
       })
       .catch(() => {
-        // Keep header resilient on public routes.
+        // Header must remain resilient for public pages.
       });
 
     return () => {
@@ -130,6 +119,7 @@ export function Header() {
 
     window.addEventListener('mousedown', onClickOutside);
     window.addEventListener('keydown', onEsc);
+
     return () => {
       window.removeEventListener('mousedown', onClickOutside);
       window.removeEventListener('keydown', onEsc);
@@ -139,6 +129,7 @@ export function Header() {
   const initials = useMemo(() => initialsFromUser(user), [user]);
   const displayName = user?.profile?.display_name || user?.email || 'Public Visitor';
   const role = user?.profile?.role ? user.profile.role.replaceAll('_', ' ') : 'Public';
+  const avatarUrl = user?.profile?.avatar_url || null;
 
   async function signOut() {
     setIsSigningOut(true);
@@ -157,12 +148,12 @@ export function Header() {
     const rightAction = pathname === '/login' ? { href: '/maps', label: 'Public Maps' } : { href: '/login', label: user ? 'Dashboard' : 'Sign In' };
 
     return (
-      <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-gradient-to-r from-[var(--brand)] via-[var(--brand)] to-[var(--brand-dark)] text-white shadow-[0_6px_24px_rgba(16,46,34,0.18)] backdrop-blur supports-[backdrop-filter]:bg-[linear-gradient(to_right,var(--brand),var(--brand),var(--brand-dark))]/95">
-        <div className="mx-auto flex min-h-[74px] w-full max-w-[76rem] items-center justify-between gap-4 px-4 py-2.5 md:px-6">
-          <BrandLockup compact={false} />
+      <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-gradient-to-r from-[var(--brand)] via-[var(--brand)] to-[var(--brand-dark)] text-white shadow-md">
+        <div className="page-container flex h-16 items-center justify-between gap-3 px-4 md:px-6">
+          <BrandLockup />
           <Link
             href={rightAction.href}
-            className="inline-flex h-10 items-center rounded-xl border border-white/26 bg-white/10 px-4 text-sm font-medium text-white transition hover:bg-white/16"
+            className="inline-flex h-9 items-center rounded-md border border-white/30 bg-white/10 px-3.5 text-sm font-semibold text-white transition hover:bg-white/16"
           >
             {rightAction.label}
           </Link>
@@ -172,75 +163,83 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-gradient-to-r from-[var(--brand)] via-[var(--brand)] to-[var(--brand-dark)] text-white shadow-[0_6px_24px_rgba(16,46,34,0.18)] backdrop-blur supports-[backdrop-filter]:bg-[linear-gradient(to_right,var(--brand),var(--brand),var(--brand-dark))]/95">
-      <div className="mx-auto w-full max-w-[76rem] px-4 py-2.5 md:px-6 md:py-3">
-        <div className="hidden min-h-[66px] grid-cols-[minmax(260px,320px)_1fr_minmax(230px,320px)] items-center gap-4 md:grid">
-          <div className="flex items-center">
-            <BrandLockup compact={false} />
-          </div>
+    <header className="sticky top-0 z-50 w-full border-b border-white/12 bg-gradient-to-r from-[var(--brand)] via-[var(--brand)] to-[var(--brand-dark)] text-white shadow-md">
+      <div className="page-container px-4 md:px-6">
+        <div className="hidden h-16 grid-cols-[minmax(240px,300px)_1fr_minmax(240px,300px)] items-center gap-3 md:grid">
+          <BrandLockup />
 
-          <div className="flex min-w-0 justify-center">
-            <nav className="inline-flex min-w-0 items-center gap-1 rounded-2xl border border-white/20 bg-white/8 p-1" aria-label="Primary">
-              {appNavItems.map((item) => (
-                <Link key={item.key} href={item.href} className={navItemClass(activeKey === item.key)}>
-                  {item.label}
+          <nav className="mx-auto inline-flex items-center gap-1 rounded-lg border border-white/25 bg-white/8 p-1" aria-label="Primary">
+            {appNavItems.map((item) => {
+              const Icon = item.icon;
+              const active = activeKey === item.key;
+              return (
+                <Link
+                  key={item.key}
+                  href={item.href}
+                  className={active
+                    ? 'inline-flex h-9 items-center gap-2 rounded-md bg-white px-3.5 text-sm font-semibold text-[var(--brand-dark)]'
+                    : 'inline-flex h-9 items-center gap-2 rounded-md px-3.5 text-sm font-medium text-white/90 transition hover:bg-white/15 hover:text-white'}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  <span>{item.label}</span>
                 </Link>
-              ))}
-            </nav>
-          </div>
+              );
+            })}
+          </nav>
 
           <div className="flex justify-end" ref={menuRef}>
             <div className="relative">
               <button
                 type="button"
-                className="inline-flex h-11 items-center gap-2 rounded-full border border-white/24 bg-white/10 px-2 pr-3.5 transition hover:bg-white/16"
-                title="Account menu"
+                className="inline-flex h-10 items-center gap-2 rounded-full border border-white/28 bg-white/10 px-2.5 pr-3 transition hover:bg-white/16"
                 onClick={() => setMenuOpen((v) => !v)}
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
               >
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[var(--brand-yellow)] text-[11px] font-bold text-[var(--brand-dark)]">
-                  {initials}
+                <span className="inline-flex h-7 w-7 overflow-hidden rounded-full border border-white/30 bg-[var(--brand-yellow)] text-[10px] font-bold text-[var(--brand-dark)]">
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <span className="m-auto">{initials}</span>
+                  )}
                 </span>
-                <span className="text-left">
-                  <span className="block max-w-[168px] truncate text-sm font-semibold leading-tight">{displayName}</span>
-                  <span className="block text-[11px] font-medium text-white/70">{role}</span>
+                <span className="text-left leading-tight">
+                  <span className="block max-w-[150px] truncate text-sm font-semibold text-white">{displayName}</span>
+                  <span className="block text-[11px] text-white/70">{role}</span>
                 </span>
-                <svg className="h-4 w-4 text-white/75" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                  <path d="M5.25 7.5a.75.75 0 0 1 1.06 0L10 11.19l3.69-3.69a.75.75 0 1 1 1.06 1.06l-4.22 4.22a.75.75 0 0 1-1.06 0L5.25 8.56a.75.75 0 0 1 0-1.06z" />
-                </svg>
+                <ChevronDown className="h-4 w-4 text-white/76" />
               </button>
 
               {menuOpen ? (
                 <div
-                  className="absolute right-0 mt-2 w-[248px] overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 text-[var(--foreground)] shadow-[0_14px_34px_rgba(18,44,34,0.18)]"
+                  className="absolute right-0 mt-2 w-[248px] overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--card)] p-2 text-[var(--foreground)] shadow-[0_14px_34px_rgba(18,44,34,0.18)]"
                   role="menu"
                 >
                   <div className="border-b border-[var(--border)] px-2 pb-2">
                     <p className="truncate text-sm font-semibold text-[var(--heading)]">{displayName}</p>
-                    <p className="truncate text-xs text-black/58">{user?.email ?? 'Not signed in'}</p>
+                    <p className="truncate text-xs text-black/62">{user?.email ?? 'Not signed in'}</p>
                   </div>
                   <Link
                     href="/dashboard"
-                    className="mt-1 block rounded-lg px-2 py-2 text-sm text-black/80 hover:bg-[var(--surface-subtle)]"
+                    className="mt-1 block rounded-md px-2 py-2 text-sm text-black/84 hover:bg-[var(--muted)]"
                     onClick={() => setMenuOpen(false)}
                   >
                     Profile
                   </Link>
-                  <p className="px-2 py-1 text-xs text-black/52">Role: {role}</p>
+                  <p className="px-2 py-1 text-xs text-black/58">Role: {role}</p>
                   {user ? (
                     <button
                       type="button"
-                      className="mt-1 w-full rounded-lg px-2 py-2 text-left text-sm text-[var(--accent-red)] hover:bg-[var(--surface-subtle)]"
+                      className="mt-1 w-full rounded-md px-2 py-2 text-left text-sm text-[var(--accent-red)] hover:bg-[var(--muted)]"
                       onClick={() => void signOut()}
                       disabled={isSigningOut}
                     >
-                      {isSigningOut ? 'Signing out…' : 'Sign out'}
+                      {isSigningOut ? 'Signing out...' : 'Sign out'}
                     </button>
                   ) : (
                     <Link
                       href="/login"
-                      className="mt-1 block rounded-lg px-2 py-2 text-sm hover:bg-[var(--surface-subtle)]"
+                      className="mt-1 block rounded-md px-2 py-2 text-sm hover:bg-[var(--muted)]"
                       onClick={() => setMenuOpen(false)}
                     >
                       Sign in
@@ -252,22 +251,35 @@ export function Header() {
           </div>
         </div>
 
-        <div className="md:hidden">
-          <div className="flex min-h-[58px] items-center justify-between gap-2">
+        <div className="md:hidden py-2">
+          <div className="flex min-h-[52px] items-center justify-between gap-2">
             <BrandLockup compact />
-            <div className="flex items-center gap-2 rounded-full border border-white/24 bg-white/10 px-2 py-1">
-              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[var(--brand-yellow)] text-[10px] font-bold text-[var(--brand-dark)]">
-                {initials}
-              </span>
-            </div>
+            <span className="inline-flex h-8 w-8 overflow-hidden rounded-full border border-white/30 bg-[var(--brand-yellow)] text-[10px] font-bold text-[var(--brand-dark)]">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+              ) : (
+                <span className="m-auto">{initials}</span>
+              )}
+            </span>
           </div>
 
           <nav className="mt-2 flex items-center gap-1 overflow-x-auto pb-0.5" aria-label="Mobile Primary">
-            {appNavItems.map((item) => (
-              <Link key={item.key} href={item.href} className={`${mobileNavItemClass(activeKey === item.key)} shrink-0`}>
-                {item.label}
-              </Link>
-            ))}
+            {appNavItems.map((item) => {
+              const Icon = item.icon;
+              const active = activeKey === item.key;
+              return (
+                <Link
+                  key={item.key}
+                  href={item.href}
+                  className={`${active
+                    ? 'inline-flex h-9 items-center gap-1.5 rounded-md bg-white px-3 text-xs font-semibold text-[var(--brand-dark)]'
+                    : 'inline-flex h-9 items-center gap-1.5 rounded-md border border-white/26 bg-white/10 px-3 text-xs font-medium text-white/90 hover:bg-white/16'} shrink-0`}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
           </nav>
         </div>
       </div>

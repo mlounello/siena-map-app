@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { Compass, MapPinned } from 'lucide-react';
 import {
   AppShell,
   Badge,
@@ -132,7 +133,10 @@ export default function PublicDirectoryPage() {
             className="rounded-2xl border border-[var(--border)] bg-gradient-to-b from-white to-[var(--surface-subtle)] p-5 shadow-[0_1px_2px_rgba(20,46,35,0.06)] transition hover:-translate-y-0.5 hover:border-[var(--border-strong)] hover:shadow-[0_10px_24px_rgba(20,46,35,0.1)]"
           >
             <div className="flex items-start justify-between gap-3">
-              <h2 className="text-[1.1rem] font-semibold tracking-[-0.01em] text-[var(--heading)]">{map.title}</h2>
+              <h2 className="inline-flex items-center gap-2 text-[1.1rem] font-semibold tracking-[-0.01em] text-[var(--heading)]">
+                <MapPinned className="h-4 w-4 text-[var(--brand)]" />
+                {map.title}
+              </h2>
               <Badge label={map.map_type.replaceAll('_', ' ')} tone="info" />
             </div>
             <p className="mt-2 text-sm leading-6 text-black/73">{map.intro_text ?? 'No description provided yet.'}</p>
@@ -141,7 +145,10 @@ export default function PublicDirectoryPage() {
             </p>
             <div className="mt-4 action-bar">
               <Link href={`/maps/${map.slug}`}>
-                <Button>Open Map</Button>
+                <Button>
+                  <Compass className="h-4 w-4" />
+                  Open Map
+                </Button>
               </Link>
             </div>
           </article>

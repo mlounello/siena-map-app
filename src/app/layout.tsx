@@ -1,12 +1,26 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Gudea, Merriweather, Oswald } from 'next/font/google';
 import { Header } from '@/components/layout/header';
 import 'leaflet/dist/leaflet.css';
 import './globals.css';
 
-const inter = Inter({
+const oswald = Oswald({
   subsets: ['latin'],
-  variable: '--font-inter',
+  variable: '--font-oswald',
+  display: 'swap',
+});
+
+const gudea = Gudea({
+  subsets: ['latin'],
+  variable: '--font-gudea',
+  weight: ['400', '700'],
+  display: 'swap',
+});
+
+const merriweather = Merriweather({
+  subsets: ['latin'],
+  variable: '--font-merriweather',
+  weight: ['300', '400', '700'],
   display: 'swap',
 });
 
@@ -18,7 +32,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} antialiased min-h-screen`}>
+      <body className={`${oswald.variable} ${gudea.variable} ${merriweather.variable} min-h-screen antialiased`}>
         <Header />
         <main className="app-main">{children}</main>
       </body>

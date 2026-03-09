@@ -32,7 +32,7 @@ export async function GET() {
 
   const { data: profile, error: profileError } = await db
     .from('profiles')
-    .select('id, email, role')
+    .select('id, email, display_name, avatar_url, role')
     .eq('id', user.id)
     .maybeSingle();
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { AlertCircle, ClipboardList, MapPinned, Milestone } from 'lucide-react';
 import {
   AppShell,
   Badge,
@@ -108,19 +109,23 @@ export default function ReviewQueuePage() {
 
         <SectionCard title="Queue Snapshot" subtitle="Current moderation queue by item type.">
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-3.5">
+            <div className="surface-stat">
+              <ClipboardList className="mb-1.5 h-4 w-4 text-[var(--brand)]" />
               <p className="row-meta">Total in queue</p>
               <p className="mt-1 text-2xl font-semibold text-[var(--heading)]">{queueCounts.total}</p>
             </div>
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-3.5">
+            <div className="surface-stat">
+              <MapPinned className="mb-1.5 h-4 w-4 text-[var(--accent-blue)]" />
               <p className="row-meta">Map items</p>
               <p className="mt-1 text-2xl font-semibold text-[var(--heading)]">{queueCounts.maps}</p>
             </div>
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-3.5">
+            <div className="surface-stat">
+              <Milestone className="mb-1.5 h-4 w-4 text-[var(--brand-dark)]" />
               <p className="row-meta">POI items</p>
               <p className="mt-1 text-2xl font-semibold text-[var(--heading)]">{queueCounts.pois}</p>
             </div>
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-3.5">
+            <div className="surface-stat">
+              <AlertCircle className="mb-1.5 h-4 w-4 text-[var(--accent-red)]" />
               <p className="row-meta">Rejected</p>
               <p className="mt-1 text-2xl font-semibold text-[var(--heading)]">{queueCounts.rejected}</p>
             </div>

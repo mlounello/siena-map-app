@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Chrome } from 'lucide-react';
 import { Button, PageHeader, Panel } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 
@@ -41,7 +42,8 @@ export default function LoginPage() {
       <Panel title="Continue with Google" subtitle="Secure sign-in for authorized Siena users.">
         <div className="space-y-4">
           <Button type="button" onClick={signInWithGoogle} disabled={loading} className="w-full justify-center">
-            {loading ? 'Redirecting…' : 'Continue with Google'}
+            <Chrome className="h-4 w-4" />
+            {loading ? 'Redirecting...' : 'Continue with Google'}
           </Button>
 
           {error ? <p className="text-sm text-[var(--accent-red)]">{error}</p> : null}
