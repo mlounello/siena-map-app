@@ -5,7 +5,7 @@ import { AppShell, Button, EmptyState, PageHeader, SectionCard, StatusMessage } 
 import { FormField, SelectInput, TextInput } from '@/components/ui/form-controls';
 import { LoadingRows } from '@/components/ui/loading';
 
-type Department = { id: string; name: string; slug: string; description: string | null };
+type Department = { id: string; name: string; slug: string; description: string | null; is_active: boolean };
 type User = { id: string; email: string };
 
 export default function DepartmentsAdminPage() {
@@ -18,6 +18,7 @@ export default function DepartmentsAdminPage() {
 
   const [createForm, setCreateForm] = useState({ name: '', slug: '', description: '' });
   const [memberForm, setMemberForm] = useState({ user_id: '', role: 'viewer' });
+  const [editForm, setEditForm] = useState({ name: '', slug: '', description: '' });
 
   async function loadDepartments() {
     setLoading(true);
@@ -58,7 +59,25 @@ export default function DepartmentsAdminPage() {
     if (selectedDepartmentId) void loadMembers(selectedDepartmentId);
   }, [selectedDepartmentId]);
 
+  useEffect(() => {
+    const selected = departments.find((department) => department.id === selectedDepartmentId);
+    if (!selected) {
+      setEditForm({ name: '', slug: '', description: '' });
+      return;
+    }
+
+    setEditForm({
+      name: selected.name,
+      slug: selected.slug,
+      description: selected.description ?? '',
+    });
+  }, [selectedDepartmentId, departments]);
+
   const userById = useMemo(() => Object.fromEntries(users.map((u) => [u.id, u.email])), [users]);
+  const selectedDepartment = useMemo(
+    () => departments.find((department) => department.id === selectedDepartmentId) ?? null,
+    [departments, selectedDepartmentId]
+  );
 
   async function createDepartment(e: React.FormEvent) {
     e.preventDefault();
@@ -90,6 +109,64 @@ export default function DepartmentsAdminPage() {
     setMemberForm({ user_id: '', role: 'viewer' });
     await loadMembers(selectedDepartmentId);
     setMessage('Member added.');
+  }
+
+  async function updateDepartment(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedDepartmentId) return;
+
+    const res = await fetch(`/api/departments/${selectedDepartmentId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: editForm.name,
+        slug: editForm.slug,
+        description: editForm.description || null,
+      }),
+    });
+    const json = await res.json();
+    if (!res.ok) return setMessage(json.error ?? 'Failed to update department');
+
+    await loadDepartments();
+    setMessage('Department updated.');
+  }
+
+  async function deleteDepartment() {
+    if (!selectedDepartmentId) return;
+    const selected = departments.find((department) => department.id === selectedDepartmentId);
+    if (!selected) return;
+
+    if (!window.confirm(`Delete department "${selected.name}"? This cannot be undone.`)) return;
+
+    const res = await fetch(`/api/departments/${selectedDepartmentId}`, {
+      method: 'DELETE',
+    });
+    const json = await res.json();
+    if (!res.ok) return setMessage(json.error ?? 'Failed to delete department');
+
+    const nextDepartments = departments.filter((department) => department.id !== selectedDepartmentId);
+    setSelectedDepartmentId(nextDepartments[0]?.id ?? '');
+    await loadDepartments();
+    setMessage('Department deleted.');
+  }
+
+  async function setDepartmentActiveState(nextActive: boolean) {
+    if (!selectedDepartmentId) return;
+    if (!selectedDepartment) return;
+
+    const action = nextActive ? 'restore' : 'archive';
+    if (!window.confirm(`${action === 'archive' ? 'Archive' : 'Restore'} department "${selectedDepartment.name}"?`)) return;
+
+    const res = await fetch(`/api/departments/${selectedDepartmentId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_active: nextActive }),
+    });
+    const json = await res.json();
+    if (!res.ok) return setMessage(json.error ?? `Failed to ${action} department`);
+
+    await loadDepartments();
+    setMessage(`Department ${nextActive ? 'restored' : 'archived'}.`);
   }
 
   return (
@@ -126,14 +203,51 @@ export default function DepartmentsAdminPage() {
                   className={`w-full rounded-lg border p-3 text-left ${selectedDepartmentId === department.id ? 'border-[var(--brand)] bg-[var(--surface-subtle)]' : 'border-[var(--border)] bg-white'}`}
                 >
                   <p className="row-title">{department.name}</p>
-                  <p className="row-meta">{department.slug}</p>
+                  <p className="row-meta">
+                    {department.slug}
+                    {!department.is_active ? ' · archived' : ''}
+                  </p>
                 </button>
               ))}
             </div>
           )}
         </SectionCard>
 
-        <SectionCard title="Members" subtitle="Assign users to selected department.">
+        <SectionCard title="Department Settings" subtitle="Edit or delete the selected department.">
+          {!selectedDepartmentId ? (
+            <EmptyState title="Select a department first" />
+          ) : (
+            <form onSubmit={updateDepartment} className="form-grid">
+              <div className="form-row md:grid-cols-3 md:items-end">
+                <FormField label="Name">
+                  <TextInput value={editForm.name} onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))} required />
+                </FormField>
+                <FormField label="Slug">
+                  <TextInput value={editForm.slug} onChange={(e) => setEditForm((p) => ({ ...p, slug: e.target.value }))} required />
+                </FormField>
+                <FormField label="Description">
+                  <TextInput value={editForm.description} onChange={(e) => setEditForm((p) => ({ ...p, description: e.target.value }))} />
+                </FormField>
+              </div>
+              <div className="action-bar">
+                <Button type="submit">Save Changes</Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => void setDepartmentActiveState(!selectedDepartment?.is_active)}
+                >
+                  {selectedDepartment?.is_active ? 'Archive Department' : 'Restore Department'}
+                </Button>
+                <Button type="button" variant="danger" onClick={() => void deleteDepartment()}>
+                  Delete Department
+                </Button>
+              </div>
+            </form>
+          )}
+        </SectionCard>
+      </div>
+
+      <SectionCard title="Members" subtitle="Assign users to selected department.">
           <form onSubmit={addMember} className="form-grid">
             <div className="form-row md:grid-cols-2">
               <FormField label="User">
@@ -172,7 +286,6 @@ export default function DepartmentsAdminPage() {
             )}
           </div>
         </SectionCard>
-      </div>
 
       {message ? <StatusMessage>{message}</StatusMessage> : null}
     </AppShell>
