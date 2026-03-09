@@ -82,6 +82,9 @@ export default function MapDetailPage() {
         subtitle={`Slug: /${map.slug}`}
         actions={
           <>
+            <Link href={`/dashboard/maps/${map.id}/preview`}>
+              <Button variant="secondary">Internal Preview</Button>
+            </Link>
             <Link href={`/dashboard/maps/${map.id}/pois`}>
               <Button variant="secondary">POI Manager</Button>
             </Link>
@@ -91,6 +94,11 @@ export default function MapDetailPage() {
             <Link href={`/dashboard/maps/${map.id}/embed`}>
               <Button variant="secondary">Embed Generator</Button>
             </Link>
+            {map.visibility !== 'internal_only' && map.publication_status === 'published' ? (
+              <Link href={`/maps/${map.slug}`} target="_blank">
+                <Button>Open Public Map</Button>
+              </Link>
+            ) : null}
           </>
         }
       />
@@ -99,7 +107,13 @@ export default function MapDetailPage() {
         <Toolbar>
           <Badge label={`Shell: ${map.shell_status.replaceAll('_', ' ')}`} tone={map.shell_status === 'approved' ? 'success' : map.shell_status === 'rejected' ? 'danger' : 'warning'} />
           <Badge label={`Publication: ${map.publication_status}`} tone={map.publication_status === 'published' ? 'success' : 'warning'} />
+          <Badge label={`Visibility: ${map.visibility.replaceAll('_', ' ')}`} tone="info" />
         </Toolbar>
+        {map.publication_status !== 'published' ? (
+          <p className="mt-3 text-xs text-black/65">
+            Public route stays hidden until publication is set to published. Use Internal Preview to validate map behavior before launch.
+          </p>
+        ) : null}
       </Panel>
 
       <Panel title="Map Settings">

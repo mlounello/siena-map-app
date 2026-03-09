@@ -47,7 +47,6 @@ export default function PoisPage() {
     latitude: '42.7167',
     longitude: '-73.7519',
     category_id: '',
-    owning_department_id: '',
     stop_number: '',
     pin_color: '#006b54',
   });
@@ -76,7 +75,6 @@ export default function PoisPage() {
 
     setForm((p) => ({
       ...p,
-      owning_department_id: mapJson.map?.primary_department_id ?? p.owning_department_id,
       latitude: String(mapJson.map?.default_center_lat ?? p.latitude),
       longitude: String(mapJson.map?.default_center_lng ?? p.longitude),
     }));
@@ -97,6 +95,10 @@ export default function PoisPage() {
   async function createPoi(e: React.FormEvent) {
     e.preventDefault();
     setMessage('');
+    if (!mapRecord?.primary_department_id) {
+      setMessage('Map department is missing. Update map settings before creating POIs.');
+      return;
+    }
 
     const payload = {
       map_id: mapId,
@@ -105,7 +107,7 @@ export default function PoisPage() {
       latitude: Number(form.latitude),
       longitude: Number(form.longitude),
       category_id: form.category_id || null,
-      owning_department_id: form.owning_department_id,
+      owning_department_id: mapRecord?.primary_department_id,
       stop_number: form.stop_number ? Number(form.stop_number) : null,
       pin_color: form.pin_color || null,
     };
@@ -182,7 +184,13 @@ export default function PoisPage() {
             <option value="">Category (optional)</option>
             {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
-          <input className="rounded-md border px-3 py-2 text-sm" placeholder="Owning department UUID" value={form.owning_department_id} onChange={(e) => setForm((p) => ({ ...p, owning_department_id: e.target.value }))} required />
+          <input
+            className="rounded-md border px-3 py-2 text-sm text-black/60"
+            value={mapRecord?.primary_department_id ? `Primary department (${mapRecord.primary_department_id})` : 'Primary department not set'}
+            readOnly
+            disabled
+            title="POIs default to the map's primary department for Phase 1 testing."
+          />
           <input className="rounded-md border px-3 py-2 text-sm" placeholder="Stop #" value={form.stop_number} onChange={(e) => setForm((p) => ({ ...p, stop_number: e.target.value }))} />
           <Button type="submit" className="md:col-span-3">Create POI</Button>
         </form>

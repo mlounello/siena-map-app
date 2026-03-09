@@ -13,6 +13,16 @@ type Poi = {
   longitude: number | string;
 };
 
+type RouteConnection = {
+  id: string;
+  from_poi_id: string;
+  to_poi_id: string;
+  order_index: number;
+  line_color: string | null;
+  line_thickness: number | null;
+  status?: string | null;
+};
+
 function FlyToStop({ target }: { target: LatLngExpression | null }) {
   const map = useMap();
   useEffect(() => {
@@ -26,11 +36,13 @@ export function PublicLeafletMap({
   center,
   zoom,
   pois,
+  routeConnections,
 }: {
   displayMode: 'explore_only' | 'guided_only' | 'both';
   center: { lat: number | string | null; lng: number | string | null };
   zoom: number;
   pois: Poi[];
+  routeConnections?: RouteConnection[];
 }) {
   const [uiMode, setUiMode] = useState<'explore' | 'guided'>(
     displayMode === 'guided_only' ? 'guided' : 'explore'
@@ -62,6 +74,32 @@ export function PublicLeafletMap({
   const stops = useMemo(
     () => [...normalizedPois].sort((a, b) => (a.stop_number ?? 9999) - (b.stop_number ?? 9999)),
     [normalizedPois]
+  );
+
+  const pointsById = useMemo(() => {
+    return new Map(
+      normalizedPois.map((poi) => [poi.id, [poi.latitude, poi.longitude] as [number, number]])
+    );
+  }, [normalizedPois]);
+
+  const explicitRoutes = useMemo(
+    () =>
+      (routeConnections ?? [])
+        .slice()
+        .sort((a, b) => a.order_index - b.order_index)
+        .map((route) => {
+          const from = pointsById.get(route.from_poi_id);
+          const to = pointsById.get(route.to_poi_id);
+          if (!from || !to) return null;
+          return {
+            id: route.id,
+            positions: [from, to] as [number, number][],
+            color: route.line_color || '#006b54',
+            weight: route.line_thickness || 4,
+          };
+        })
+        .filter((route): route is { id: string; positions: [number, number][]; color: string; weight: number } => !!route),
+    [pointsById, routeConnections]
   );
 
   const centerPoint: LatLngExpression =
@@ -108,7 +146,17 @@ export function PublicLeafletMap({
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
 
-            {guidedLine.length > 1 ? (
+            {explicitRoutes.length > 0
+              ? explicitRoutes.map((route) => (
+                  <Polyline
+                    key={route.id}
+                    positions={route.positions}
+                    pathOptions={{ color: route.color, weight: route.weight, opacity: 0.85 }}
+                  />
+                ))
+              : null}
+
+            {explicitRoutes.length === 0 && guidedLine.length > 1 ? (
               <Polyline positions={guidedLine} pathOptions={{ color: '#8b1f41', weight: 4, opacity: 0.85 }} />
             ) : null}
 
@@ -134,6 +182,11 @@ export function PublicLeafletMap({
             />
           </MapContainer>
         </div>
+        {stops.length === 0 ? (
+          <div className="border-t border-black/10 bg-[var(--surface-muted)]/20 px-4 py-3 text-xs text-black/70">
+            No published POIs yet for this map.
+          </div>
+        ) : null}
       </div>
 
       <aside className="rounded-xl border border-black/10 bg-white p-4">

@@ -1,12 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button, PageHeader, Panel } from '@/components/ui';
 import { createClient } from '@/lib/supabase/client';
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [callbackError, setCallbackError] = useState<string | null>(null);
+  const [callbackMessage, setCallbackMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setCallbackError(params.get('error'));
+    setCallbackMessage(params.get('message'));
+  }, []);
 
   async function signInWithGoogle() {
     setLoading(true);
@@ -36,6 +44,12 @@ export default function LoginPage() {
             {loading ? 'Redirecting…' : 'Continue with Google'}
           </Button>
           {error ? <p className="siena-subtitle text-[var(--accent-red)]">{error}</p> : null}
+          {callbackError ? (
+            <p className="siena-subtitle text-[var(--accent-red)]">
+              OAuth error: {callbackError}
+              {callbackMessage ? ` (${callbackMessage})` : ''}
+            </p>
+          ) : null}
         </div>
       </Panel>
     </section>
