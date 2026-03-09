@@ -190,7 +190,7 @@ export default function PoisPage() {
             <InternalBuilderMap
               center={builderCenter}
               zoom={mapRecord?.default_zoom ?? 16}
-              themePreset={mapRecord?.theme_preset ?? 'streets'}
+              themePreset={mapRecord?.theme_preset ?? 'MapStyle.STREETS'}
               pois={pois}
               categories={categories}
               draftLat={Number(form.latitude)}

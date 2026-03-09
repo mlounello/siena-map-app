@@ -64,7 +64,7 @@ export default function MapsPage() {
     default_center_lat: '42.7167',
     default_center_lng: '-73.7519',
     default_zoom: '16',
-    theme_preset: 'streets',
+    theme_preset: 'MapStyle.STREETS',
   });
 
   async function load() {
@@ -122,7 +122,7 @@ export default function MapsPage() {
       default_center_lat: '42.7167',
       default_center_lng: '-73.7519',
       default_zoom: '16',
-      theme_preset: 'streets',
+      theme_preset: 'MapStyle.STREETS',
     });
     await load();
     setMessage('Map shell created successfully.');

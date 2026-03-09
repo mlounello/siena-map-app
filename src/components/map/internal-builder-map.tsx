@@ -112,11 +112,15 @@ export function InternalBuilderMap({
       </div>
       <div className="h-[460px] w-full">
         <MapContainer center={center} zoom={zoom} className="h-full w-full" scrollWheelZoom>
-          <TileLayer
-            attribution={tilePreset.attribution}
-            url={tilePreset.url}
-            maxZoom={tilePreset.maxZoom}
-          />
+          {tilePreset.layers.map((layer, index) => (
+            <TileLayer
+              key={`${tilePreset.key}-layer-${index}`}
+              attribution={layer.attribution}
+              url={layer.url}
+              maxZoom={layer.maxZoom}
+              opacity={layer.opacity}
+            />
+          ))}
           <MapClickCapture onPick={onPick} />
 
           {guideLine.length > 1 ? (

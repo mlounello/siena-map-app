@@ -187,11 +187,15 @@ export function PublicLeafletMap({
 
         <div className="h-[460px] w-full">
           <MapContainer center={centerPoint} zoom={zoom || 16} className="h-full w-full" scrollWheelZoom>
-            <TileLayer
-              attribution={tilePreset.attribution}
-              url={tilePreset.url}
-              maxZoom={tilePreset.maxZoom}
-            />
+            {tilePreset.layers.map((layer, index) => (
+              <TileLayer
+                key={`${tilePreset.key}-layer-${index}`}
+                attribution={layer.attribution}
+                url={layer.url}
+                maxZoom={layer.maxZoom}
+                opacity={layer.opacity}
+              />
+            ))}
 
             {explicitRoutes.length > 0
               ? explicitRoutes.map((route) => (

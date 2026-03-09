@@ -194,7 +194,7 @@ export default function MapDetailPage() {
             </FormField>
             <FormField label="Map style">
               <SelectInput
-                value={map.theme_preset ?? 'streets'}
+                value={map.theme_preset ?? 'MapStyle.STREETS'}
                 onChange={(e) => setMap((p) => (p ? { ...p, theme_preset: e.target.value } : p))}
               >
                 {MAP_TILE_PRESETS.map((preset) => (
