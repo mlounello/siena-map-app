@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { InternalBuilderMap } from '@/components/map/internal-builder-map';
 
 type Poi = {
   id: string;
@@ -17,9 +18,18 @@ type Poi = {
 
 type Category = { id: string; name: string };
 
+type MapRecord = {
+  id: string;
+  default_center_lat: number | string | null;
+  default_center_lng: number | string | null;
+  default_zoom: number;
+  primary_department_id: string;
+};
+
 export default function PoisPage() {
   const params = useParams<{ id: string }>();
   const mapId = params.id;
+  const [mapRecord, setMapRecord] = useState<MapRecord | null>(null);
   const [pois, setPois] = useState<Poi[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [message, setMessage] = useState('');
@@ -45,14 +55,36 @@ export default function PoisPage() {
     const categoriesJson = await categoriesRes.json();
     const mapJson = await mapRes.json();
 
-    setPois(poisJson.pois ?? []);
+    const loadedPois: Poi[] = (poisJson.pois ?? []).map((poi: any) => ({
+      ...poi,
+      latitude: Number(poi.latitude),
+      longitude: Number(poi.longitude),
+      stop_number: poi.stop_number == null ? null : Number(poi.stop_number),
+    }));
+
+    setPois(loadedPois);
     setCategories(categoriesJson.categories ?? []);
-    setForm((p) => ({ ...p, owning_department_id: mapJson.map?.primary_department_id ?? p.owning_department_id }));
+    setMapRecord(mapJson.map ?? null);
+
+    setForm((p) => ({
+      ...p,
+      owning_department_id: mapJson.map?.primary_department_id ?? p.owning_department_id,
+      latitude: String(mapJson.map?.default_center_lat ?? p.latitude),
+      longitude: String(mapJson.map?.default_center_lng ?? p.longitude),
+    }));
   }
 
   useEffect(() => {
     if (mapId) void load(mapId);
   }, [mapId]);
+
+  const builderCenter = useMemo<[number, number]>(() => {
+    if (Number.isFinite(Number(mapRecord?.default_center_lat)) && Number.isFinite(Number(mapRecord?.default_center_lng))) {
+      return [Number(mapRecord?.default_center_lat), Number(mapRecord?.default_center_lng)];
+    }
+    if (pois[0]) return [pois[0].latitude, pois[0].longitude];
+    return [42.7167, -73.7519];
+  }, [mapRecord, pois]);
 
   async function createPoi(e: React.FormEvent) {
     e.preventDefault();
@@ -86,6 +118,23 @@ export default function PoisPage() {
     setMessage('POI created.');
   }
 
+  async function movePoi(poiId: string, lat: number, lng: number) {
+    const res = await fetch(`/api/pois/${poiId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ latitude: lat, longitude: lng }),
+    });
+
+    const json = await res.json();
+    if (!res.ok) {
+      setMessage(json.error ?? 'Failed to move POI marker');
+      return;
+    }
+
+    setMessage('POI coordinates updated.');
+    await load(mapId);
+  }
+
   async function actionPoi(id: string, action: 'submit' | 'approve' | 'reject' | 'publish') {
     const body = action === 'publish' ? { status: 'published' } : {};
     const res = await fetch(`/api/pois/${id}/${action}`, {
@@ -104,7 +153,23 @@ export default function PoisPage() {
 
   return (
     <section className="space-y-6">
-      <h1 className="text-3xl font-semibold tracking-tight text-[var(--brand)]">POI Manager</h1>
+      <h1 className="text-3xl font-semibold tracking-tight text-[var(--brand)]">POI Manager + Builder Canvas</h1>
+
+      <InternalBuilderMap
+        center={builderCenter}
+        zoom={mapRecord?.default_zoom ?? 16}
+        pois={pois}
+        draftLat={Number(form.latitude)}
+        draftLng={Number(form.longitude)}
+        onPick={(lat, lng) =>
+          setForm((p) => ({
+            ...p,
+            latitude: lat.toFixed(6),
+            longitude: lng.toFixed(6),
+          }))
+        }
+        onMovePoi={movePoi}
+      />
 
       <form onSubmit={createPoi} className="grid gap-3 rounded-xl border border-black/10 bg-white p-4 md:grid-cols-3">
         <input className="rounded-md border border-black/15 px-3 py-2 text-sm" placeholder="Title" value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} required />
@@ -129,6 +194,7 @@ export default function PoisPage() {
               <div>
                 <h2 className="font-semibold">{poi.stop_number ? `${poi.stop_number}. ` : ''}{poi.title}</h2>
                 <p className="text-xs text-black/60">Status: {poi.status} | Dept: {poi.owning_department_id} | Creator: {poi.created_by ?? 'n/a'}</p>
+                <p className="text-xs text-black/60">{poi.latitude.toFixed(6)}, {poi.longitude.toFixed(6)}</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <button onClick={() => actionPoi(poi.id, 'submit')} className="rounded-md border border-black/15 px-2 py-1 text-xs">Submit</button>

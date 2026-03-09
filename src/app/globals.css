@@ -3,12 +3,21 @@
 @tailwind utilities;
 
 :root {
-  --background: #f7f4ef;
-  --foreground: #1f2937;
-  --brand: #8b1f41;
+  --background: #ffffff;
+  --foreground: #1c2b25;
+  --brand: #006b54;
   --brand-ink: #ffffff;
+  --brand-dark: #1b4932;
+  --brand-yellow: #fcc917;
   --surface: #ffffff;
-  --surface-muted: #efe8de;
+  --surface-muted: #cfc9c4;
+  --accent-green: #0db02b;
+  --accent-red: #b01c2e;
+  --accent-blue: #008ab1;
+  --font-headline: var(--font-oswald), 'Arial Narrow', sans-serif;
+  --font-subhead: var(--font-gudea), 'Segoe UI', sans-serif;
+  --font-body: var(--font-merriweather), Georgia, serif;
+  --font-display: 'Sullivan', var(--font-oswald), sans-serif;
 }
 
 * {
@@ -19,14 +28,71 @@ body {
   margin: 0;
   min-height: 100vh;
   background:
-    radial-gradient(circle at 20% 20%, #fff8eb 0%, transparent 45%),
-    radial-gradient(circle at 80% 10%, #f0dfca 0%, transparent 40%),
+    radial-gradient(circle at 8% 10%, rgba(252, 201, 23, 0.22) 0%, transparent 36%),
+    radial-gradient(circle at 92% 14%, rgba(0, 138, 177, 0.16) 0%, transparent 34%),
+    linear-gradient(165deg, rgba(0, 107, 84, 0.07) 0%, rgba(27, 73, 50, 0.12) 44%, transparent 70%),
     var(--background);
   color: var(--foreground);
-  font-family: 'Avenir Next', 'Segoe UI', sans-serif;
+  font-family: var(--font-body);
+  line-height: 1.55;
 }
 
 a {
   color: inherit;
   text-decoration: none;
+}
+
+h1,
+h2 {
+  font-family: var(--font-headline);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-subhead);
+  letter-spacing: 0.02em;
+}
+
+.headline-display {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.headline-primary {
+  font-family: var(--font-headline);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.subhead {
+  font-family: var(--font-subhead);
+}
+
+::selection {
+  background: var(--brand-yellow);
+  color: #1a1a1a;
+}
+
+input,
+textarea,
+select {
+  background: #ffffff;
+  border-color: rgba(27, 73, 50, 0.28);
+  font-family: var(--font-body);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: 2px solid rgba(252, 201, 23, 0.75);
+  outline-offset: 1px;
+}
+
+button {
+  font-family: var(--font-subhead);
 }

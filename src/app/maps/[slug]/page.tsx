@@ -31,7 +31,12 @@ export default async function PublicMapPage({ params }: { params: Promise<{ slug
         {map.intro_text ? <p className="mt-2 max-w-3xl text-sm text-black/75">{map.intro_text}</p> : null}
       </header>
 
-      <PublicMapShell displayMode={map.display_mode} pois={pois ?? []} />
+      <PublicMapShell
+        displayMode={map.display_mode}
+        center={{ lat: map.default_center_lat, lng: map.default_center_lng }}
+        zoom={map.default_zoom ?? 16}
+        pois={pois ?? []}
+      />
     </section>
   );
 }
