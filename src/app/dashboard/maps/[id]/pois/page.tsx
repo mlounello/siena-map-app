@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { InternalBuilderMap } from '@/components/map/internal-builder-map';
-import { Badge, Button, PageHeader, Panel } from '@/components/ui';
+import { AppShell, Badge, Button, EmptyState, PageHeader, SectionCard, StatusMessage } from '@/components/ui';
+import { FormField, SelectInput, TextArea, TextInput } from '@/components/ui/form-controls';
+import { LoadingRows } from '@/components/ui/loading';
 
 type Poi = {
   id: string;
@@ -18,6 +20,7 @@ type Poi = {
 };
 
 type Category = { id: string; name: string };
+type Department = { id: string; name: string };
 
 type MapRecord = {
   id: string;
@@ -40,7 +43,10 @@ export default function PoisPage() {
   const [mapRecord, setMapRecord] = useState<MapRecord | null>(null);
   const [pois, setPois] = useState<Poi[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(true);
+
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -52,15 +58,18 @@ export default function PoisPage() {
   });
 
   async function load(id: string) {
-    const [poisRes, categoriesRes, mapRes] = await Promise.all([
+    setLoading(true);
+    const [poisRes, categoriesRes, mapRes, deptRes] = await Promise.all([
       fetch(`/api/pois?mapId=${id}`, { cache: 'no-store' }),
       fetch('/api/categories', { cache: 'no-store' }),
       fetch(`/api/maps/${id}`, { cache: 'no-store' }),
+      fetch('/api/departments', { cache: 'no-store' }),
     ]);
 
     const poisJson = await poisRes.json();
     const categoriesJson = await categoriesRes.json();
     const mapJson = await mapRes.json();
+    const deptJson = await deptRes.json();
 
     const loadedPois: Poi[] = (poisJson.pois ?? []).map((poi: any) => ({
       ...poi,
@@ -72,12 +81,14 @@ export default function PoisPage() {
     setPois(loadedPois);
     setCategories(categoriesJson.categories ?? []);
     setMapRecord(mapJson.map ?? null);
+    setDepartments(deptJson.departments ?? []);
 
     setForm((p) => ({
       ...p,
       latitude: String(mapJson.map?.default_center_lat ?? p.latitude),
       longitude: String(mapJson.map?.default_center_lng ?? p.longitude),
     }));
+    setLoading(false);
   }
 
   useEffect(() => {
@@ -91,6 +102,8 @@ export default function PoisPage() {
     if (pois[0]) return [pois[0].latitude, pois[0].longitude];
     return [42.7167, -73.7519];
   }, [mapRecord, pois]);
+
+  const departmentById = useMemo(() => Object.fromEntries(departments.map((d) => [d.id, d.name])), [departments]);
 
   async function createPoi(e: React.FormEvent) {
     e.preventDefault();
@@ -107,7 +120,7 @@ export default function PoisPage() {
       latitude: Number(form.latitude),
       longitude: Number(form.longitude),
       category_id: form.category_id || null,
-      owning_department_id: mapRecord?.primary_department_id,
+      owning_department_id: mapRecord.primary_department_id,
       stop_number: form.stop_number ? Number(form.stop_number) : null,
       pin_color: form.pin_color || null,
     };
@@ -155,74 +168,102 @@ export default function PoisPage() {
   }
 
   return (
-    <section className="space-y-6">
+    <AppShell>
       <PageHeader
         eyebrow="Map Builder"
         title="POI Manager"
-        subtitle="Create stops, place coordinates from the map, and manage workflow status."
+        subtitle="Create and position stops while managing moderation and publication state."
       />
 
-      <Panel title="Builder Canvas">
-        <InternalBuilderMap
-          center={builderCenter}
-          zoom={mapRecord?.default_zoom ?? 16}
-          pois={pois}
-          draftLat={Number(form.latitude)}
-          draftLng={Number(form.longitude)}
-          onPick={(lat, lng) => setForm((p) => ({ ...p, latitude: lat.toFixed(6), longitude: lng.toFixed(6) }))}
-          onMovePoi={movePoi}
-        />
-      </Panel>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+        <SectionCard title="Builder Canvas" subtitle="Click map to pick coordinates. Drag pins to move POIs.">
+          {loading ? (
+            <LoadingRows rows={4} />
+          ) : (
+            <InternalBuilderMap
+              center={builderCenter}
+              zoom={mapRecord?.default_zoom ?? 16}
+              pois={pois}
+              draftLat={Number(form.latitude)}
+              draftLng={Number(form.longitude)}
+              onPick={(lat, lng) => setForm((p) => ({ ...p, latitude: lat.toFixed(6), longitude: lng.toFixed(6) }))}
+              onMovePoi={movePoi}
+            />
+          )}
+        </SectionCard>
 
-      <Panel title="Create POI">
-        <form onSubmit={createPoi} className="grid gap-3 md:grid-cols-3">
-          <input className="rounded-md border px-3 py-2 text-sm" placeholder="Title" value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} required />
-          <input className="rounded-md border px-3 py-2 text-sm" placeholder="Latitude" value={form.latitude} onChange={(e) => setForm((p) => ({ ...p, latitude: e.target.value }))} required />
-          <input className="rounded-md border px-3 py-2 text-sm" placeholder="Longitude" value={form.longitude} onChange={(e) => setForm((p) => ({ ...p, longitude: e.target.value }))} required />
-          <textarea className="rounded-md border px-3 py-2 text-sm md:col-span-3" rows={3} placeholder="Description" value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
-          <select className="rounded-md border px-3 py-2 text-sm" value={form.category_id} onChange={(e) => setForm((p) => ({ ...p, category_id: e.target.value }))}>
-            <option value="">Category (optional)</option>
-            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-          <input
-            className="rounded-md border px-3 py-2 text-sm text-black/60"
-            value={mapRecord?.primary_department_id ? `Primary department (${mapRecord.primary_department_id})` : 'Primary department not set'}
-            readOnly
-            disabled
-            title="POIs default to the map's primary department for Phase 1 testing."
-          />
-          <input className="rounded-md border px-3 py-2 text-sm" placeholder="Stop #" value={form.stop_number} onChange={(e) => setForm((p) => ({ ...p, stop_number: e.target.value }))} />
-          <Button type="submit" className="md:col-span-3">Create POI</Button>
-        </form>
-      </Panel>
+        <SectionCard title="Create POI" subtitle="New POIs default to the map primary department.">
+          <form onSubmit={createPoi} className="form-grid">
+            <FormField label="Title">
+              <TextInput value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} required />
+            </FormField>
+            <div className="form-row md:grid-cols-2">
+              <FormField label="Latitude">
+                <TextInput value={form.latitude} onChange={(e) => setForm((p) => ({ ...p, latitude: e.target.value }))} required />
+              </FormField>
+              <FormField label="Longitude">
+                <TextInput value={form.longitude} onChange={(e) => setForm((p) => ({ ...p, longitude: e.target.value }))} required />
+              </FormField>
+            </div>
+            <FormField label="Description">
+              <TextArea rows={3} value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
+            </FormField>
+            <div className="form-row md:grid-cols-2">
+              <FormField label="Category">
+                <SelectInput value={form.category_id} onChange={(e) => setForm((p) => ({ ...p, category_id: e.target.value }))}>
+                  <option value="">None</option>
+                  {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </SelectInput>
+              </FormField>
+              <FormField label="Stop number">
+                <TextInput value={form.stop_number} onChange={(e) => setForm((p) => ({ ...p, stop_number: e.target.value }))} />
+              </FormField>
+            </div>
+            <FormField label="Owning department">
+              <TextInput
+                value={mapRecord?.primary_department_id ? departmentById[mapRecord.primary_department_id] ?? 'Primary department' : 'Primary department not set'}
+                readOnly
+                disabled
+              />
+            </FormField>
+            <Button type="submit">Create POI</Button>
+          </form>
+        </SectionCard>
+      </div>
 
-      {message ? <p className="siena-subtitle text-[var(--brand)]">{message}</p> : null}
+      {message ? <StatusMessage>{message}</StatusMessage> : null}
 
-      <Panel title="POI List">
-        <div className="space-y-3">
-          {pois.map((poi) => (
-            <article key={poi.id} className="rounded-xl border border-black/10 bg-white p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h2 className="font-semibold text-[var(--brand-dark)]">{poi.stop_number ? `${poi.stop_number}. ` : ''}{poi.title}</h2>
-                  <div className="mt-1 flex flex-wrap gap-2">
-                    <Badge label={poi.status.replaceAll('_', ' ')} tone={statusTone(poi.status)} />
-                    <Badge label={`Dept ${poi.owning_department_id}`} tone="info" />
+      <SectionCard title="POI Inventory" subtitle="Review each stop and run workflow actions.">
+        {loading ? (
+          <LoadingRows rows={5} />
+        ) : pois.length === 0 ? (
+          <EmptyState title="No POIs yet" description="Create the first POI to begin map content authoring." />
+        ) : (
+          <div className="space-y-3">
+            {pois.map((poi) => (
+              <article key={poi.id} className="rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h2 className="row-title">{poi.stop_number ? `${poi.stop_number}. ` : ''}{poi.title}</h2>
+                    <div className="mt-1 flex flex-wrap gap-2">
+                      <Badge label={poi.status.replaceAll('_', ' ')} tone={statusTone(poi.status)} />
+                      <Badge label={departmentById[poi.owning_department_id] ?? 'Department'} tone="info" />
+                    </div>
+                    <p className="row-meta">{poi.latitude.toFixed(6)}, {poi.longitude.toFixed(6)}</p>
                   </div>
-                  <p className="mt-1 text-xs text-black/60">{poi.latitude.toFixed(6)}, {poi.longitude.toFixed(6)}</p>
+                  <div className="action-bar">
+                    <Button variant="secondary" onClick={() => actionPoi(poi.id, 'submit')}>Submit</Button>
+                    <Button variant="secondary" onClick={() => actionPoi(poi.id, 'approve')}>Approve</Button>
+                    <Button variant="danger" onClick={() => actionPoi(poi.id, 'reject')}>Reject</Button>
+                    <Button onClick={() => actionPoi(poi.id, 'publish')}>Publish</Button>
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="secondary" onClick={() => actionPoi(poi.id, 'submit')}>Submit</Button>
-                  <Button variant="secondary" onClick={() => actionPoi(poi.id, 'approve')}>Approve</Button>
-                  <Button variant="danger" onClick={() => actionPoi(poi.id, 'reject')}>Reject</Button>
-                  <Button onClick={() => actionPoi(poi.id, 'publish')}>Publish</Button>
-                </div>
-              </div>
-              {poi.description ? <p className="mt-2 text-sm text-black/75">{poi.description}</p> : null}
-            </article>
-          ))}
-        </div>
-      </Panel>
-    </section>
+                {poi.description ? <p className="mt-2 text-sm text-black/75">{poi.description}</p> : null}
+              </article>
+            ))}
+          </div>
+        )}
+      </SectionCard>
+    </AppShell>
   );
 }

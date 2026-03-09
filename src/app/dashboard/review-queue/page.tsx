@@ -21,6 +21,7 @@ export default function ReviewQueuePage() {
   const [pois, setPois] = useState<QueuePoi[]>([]);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const mapTitleById = new Map(maps.map((m) => [m.id, m.title]));
 
   async function load() {
     setLoading(true);
@@ -134,7 +135,7 @@ export default function ReviewQueuePage() {
                     {item.stop_number ? `${item.stop_number}. ` : ''}
                     {item.title}
                   </p>
-                  <p className="row-meta">Map {item.map_id}</p>
+                  <p className="row-meta">Map {mapTitleById.get(item.map_id) ?? 'Associated map'}</p>
                   <div className="mt-2 toolbar">
                     <Badge label={item.status.replaceAll('_', ' ')} tone={item.status === 'rejected' ? 'danger' : 'warning'} />
                   </div>

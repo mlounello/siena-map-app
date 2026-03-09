@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Button, PageHeader, Panel } from '@/components/ui/siena';
+import { AppShell, Button, EmptyState, PageHeader, SectionCard, StatusMessage } from '@/components/ui/siena';
+import { FormField, SelectInput, TextInput } from '@/components/ui/form-controls';
+import { LoadingRows } from '@/components/ui/loading';
 
 type Poi = { id: string; title: string; stop_number: number | null };
 type Connection = {
@@ -24,6 +26,7 @@ export default function RouteEditorPage() {
   const [pois, setPois] = useState<Poi[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
     from_poi_id: '',
     to_poi_id: '',
@@ -36,6 +39,7 @@ export default function RouteEditorPage() {
   });
 
   async function load() {
+    setLoading(true);
     const [poiRes, connRes] = await Promise.all([
       fetch(`/api/pois?mapId=${mapId}`, { cache: 'no-store' }),
       fetch(`/api/route-connections?mapId=${mapId}`, { cache: 'no-store' }),
@@ -48,8 +52,13 @@ export default function RouteEditorPage() {
     setConnections(connJson.routeConnections ?? []);
 
     if (!form.from_poi_id && poiJson.pois?.[0]?.id) {
-      setForm((prev) => ({ ...prev, from_poi_id: poiJson.pois[0].id, to_poi_id: poiJson.pois?.[1]?.id ?? poiJson.pois[0].id }));
+      setForm((prev) => ({
+        ...prev,
+        from_poi_id: poiJson.pois[0].id,
+        to_poi_id: poiJson.pois?.[1]?.id ?? poiJson.pois[0].id,
+      }));
     }
+    setLoading(false);
   }
 
   useEffect(() => {
@@ -104,54 +113,80 @@ export default function RouteEditorPage() {
   }
 
   return (
-    <section className="space-y-6">
-      <PageHeader eyebrow="Map Builder" title="Route Connection Editor" subtitle="Explicitly define guided route segments and per-connection styling." />
+    <AppShell>
+      <PageHeader eyebrow="Map Builder" title="Route Connection Editor" subtitle="Define explicit route segments and per-connection display styling." />
 
-      <Panel title="Create Connection">
-        <form onSubmit={createConnection} className="grid gap-3 md:grid-cols-4">
-          <select value={form.from_poi_id} onChange={(e) => setForm((p) => ({ ...p, from_poi_id: e.target.value }))} className="rounded-md border px-3 py-2 text-sm" required>
-            <option value="">From POI</option>
-            {pois.map((poi) => <option key={poi.id} value={poi.id}>{poi.stop_number ? `${poi.stop_number}. ` : ''}{poi.title}</option>)}
-          </select>
-          <select value={form.to_poi_id} onChange={(e) => setForm((p) => ({ ...p, to_poi_id: e.target.value }))} className="rounded-md border px-3 py-2 text-sm" required>
-            <option value="">To POI</option>
-            {pois.map((poi) => <option key={poi.id} value={poi.id}>{poi.stop_number ? `${poi.stop_number}. ` : ''}{poi.title}</option>)}
-          </select>
-          <input value={form.order_index} onChange={(e) => setForm((p) => ({ ...p, order_index: e.target.value }))} className="rounded-md border px-3 py-2 text-sm" placeholder="Order" />
-          <input type="color" value={form.line_color} onChange={(e) => setForm((p) => ({ ...p, line_color: e.target.value }))} className="h-[38px] rounded-md border" />
-          <input value={form.line_style} onChange={(e) => setForm((p) => ({ ...p, line_style: e.target.value }))} className="rounded-md border px-3 py-2 text-sm" placeholder="Style" />
-          <input value={form.line_thickness} onChange={(e) => setForm((p) => ({ ...p, line_thickness: e.target.value }))} className="rounded-md border px-3 py-2 text-sm" placeholder="Thickness" />
-          <select value={form.status} onChange={(e) => setForm((p) => ({ ...p, status: e.target.value as Connection['status'] }))} className="rounded-md border px-3 py-2 text-sm">
-            <option value="unpublished">unpublished</option>
-            <option value="published">published</option>
-            <option value="archived">archived</option>
-          </select>
-          <label className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-            <input type="checkbox" checked={form.is_directional} onChange={(e) => setForm((p) => ({ ...p, is_directional: e.target.checked }))} />
-            Directional
-          </label>
-          <Button type="submit" className="md:col-span-4">Add Connection</Button>
+      <SectionCard title="Create Connection">
+        <form onSubmit={createConnection} className="form-grid">
+          <div className="form-row md:grid-cols-4">
+            <FormField label="From POI">
+              <SelectInput value={form.from_poi_id} onChange={(e) => setForm((p) => ({ ...p, from_poi_id: e.target.value }))} required>
+                <option value="">Select stop</option>
+                {pois.map((poi) => <option key={poi.id} value={poi.id}>{poi.stop_number ? `${poi.stop_number}. ` : ''}{poi.title}</option>)}
+              </SelectInput>
+            </FormField>
+            <FormField label="To POI">
+              <SelectInput value={form.to_poi_id} onChange={(e) => setForm((p) => ({ ...p, to_poi_id: e.target.value }))} required>
+                <option value="">Select stop</option>
+                {pois.map((poi) => <option key={poi.id} value={poi.id}>{poi.stop_number ? `${poi.stop_number}. ` : ''}{poi.title}</option>)}
+              </SelectInput>
+            </FormField>
+            <FormField label="Order index">
+              <TextInput value={form.order_index} onChange={(e) => setForm((p) => ({ ...p, order_index: e.target.value }))} />
+            </FormField>
+            <FormField label="Status">
+              <SelectInput value={form.status} onChange={(e) => setForm((p) => ({ ...p, status: e.target.value as Connection['status'] }))}>
+                <option value="unpublished">unpublished</option>
+                <option value="published">published</option>
+                <option value="archived">archived</option>
+              </SelectInput>
+            </FormField>
+          </div>
+
+          <div className="form-row md:grid-cols-4 md:items-end">
+            <FormField label="Line style">
+              <TextInput value={form.line_style} onChange={(e) => setForm((p) => ({ ...p, line_style: e.target.value }))} />
+            </FormField>
+            <FormField label="Line color">
+              <input type="color" className="ui-input h-[40px] p-1" value={form.line_color} onChange={(e) => setForm((p) => ({ ...p, line_color: e.target.value }))} />
+            </FormField>
+            <FormField label="Line thickness">
+              <TextInput value={form.line_thickness} onChange={(e) => setForm((p) => ({ ...p, line_thickness: e.target.value }))} />
+            </FormField>
+            <label className="inline-flex h-[40px] items-center gap-2 rounded-md border border-[var(--border-strong)] bg-[var(--surface)] px-3 text-sm">
+              <input type="checkbox" checked={form.is_directional} onChange={(e) => setForm((p) => ({ ...p, is_directional: e.target.checked }))} />
+              Directional
+            </label>
+          </div>
+
+          <Button type="submit">Add Connection</Button>
         </form>
-      </Panel>
+      </SectionCard>
 
-      <Panel title="Current Connections">
-        <div className="space-y-2">
-          {connections.map((conn) => (
-            <div key={conn.id} className="rounded-lg border border-black/10 bg-white p-3 text-sm">
-              <p className="font-semibold text-[var(--brand-dark)]">{conn.order_index}. {poiNameById[conn.from_poi_id] ?? conn.from_poi_id} → {poiNameById[conn.to_poi_id] ?? conn.to_poi_id}</p>
-              <p className="text-xs text-black/60">{conn.line_style ?? 'solid'} | {conn.line_color ?? 'default'} | {conn.line_thickness}px | {conn.status}</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <Button variant="secondary" onClick={() => updateConnection(conn.id, { status: conn.status === 'published' ? 'unpublished' : 'published' })}>
-                  {conn.status === 'published' ? 'Unpublish' : 'Publish'}
-                </Button>
-                <Button variant="danger" onClick={() => deleteConnection(conn.id)}>Delete</Button>
+      <SectionCard title="Current Connections" subtitle="Publish, unpublish, or remove individual route segments.">
+        {loading ? (
+          <LoadingRows rows={4} />
+        ) : connections.length === 0 ? (
+          <EmptyState title="No route connections" description="Add a connection to start building guided path lines." />
+        ) : (
+          <div className="space-y-2">
+            {connections.map((conn) => (
+              <div key={conn.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] p-3 text-sm">
+                <p className="row-title">{conn.order_index}. {poiNameById[conn.from_poi_id] ?? 'Unknown stop'} → {poiNameById[conn.to_poi_id] ?? 'Unknown stop'}</p>
+                <p className="row-meta">{conn.line_style ?? 'solid'} | {conn.line_color ?? 'default'} | {conn.line_thickness}px | {conn.status}</p>
+                <div className="mt-2 action-bar">
+                  <Button variant="secondary" onClick={() => updateConnection(conn.id, { status: conn.status === 'published' ? 'unpublished' : 'published' })}>
+                    {conn.status === 'published' ? 'Unpublish' : 'Publish'}
+                  </Button>
+                  <Button variant="danger" onClick={() => deleteConnection(conn.id)}>Delete</Button>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      </Panel>
+            ))}
+          </div>
+        )}
+      </SectionCard>
 
-      {message ? <p className="siena-subtitle text-[var(--brand)]">{message}</p> : null}
-    </section>
+      {message ? <StatusMessage>{message}</StatusMessage> : null}
+    </AppShell>
   );
 }

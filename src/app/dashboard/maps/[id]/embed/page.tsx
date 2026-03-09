@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Button, PageHeader, Panel } from '@/components/ui/siena';
+import { AppShell, Button, EmptyState, PageHeader, SectionCard, StatusMessage } from '@/components/ui/siena';
+import { FormField, SelectInput, TextArea, TextInput } from '@/components/ui/form-controls';
+import { LoadingRows } from '@/components/ui/loading';
 
 type EmbedConfig = {
   id: string;
@@ -24,6 +26,7 @@ export default function EmbedPage() {
 
   const [configs, setConfigs] = useState<EmbedConfig[]>([]);
   const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
     name: 'Default Embed',
     width: '100%',
@@ -38,10 +41,16 @@ export default function EmbedPage() {
   });
 
   async function load() {
+    setLoading(true);
     const res = await fetch(`/api/embed-configs?mapId=${mapId}`, { cache: 'no-store' });
     const json = await res.json();
-    if (!res.ok) return setMessage(json.error ?? 'Failed to load embed presets');
+    if (!res.ok) {
+      setMessage(json.error ?? 'Failed to load embed presets');
+      setLoading(false);
+      return;
+    }
     setConfigs(json.embedConfigs ?? []);
+    setLoading(false);
   }
 
   useEffect(() => {
@@ -79,61 +88,80 @@ export default function EmbedPage() {
   const iframeCode = `<iframe src="${typeof window !== 'undefined' ? window.location.origin : ''}${previewUrl}" width="${form.width}" height="${form.height}" style="border:0;" loading="lazy"></iframe>`;
 
   return (
-    <section className="space-y-6">
-      <PageHeader eyebrow="Embed Output" title="Embed Generator" subtitle="Save reusable embed presets and copy iframe code." />
+    <AppShell>
+      <PageHeader eyebrow="Embed Output" title="Embed Generator" subtitle="Create reusable presets and copy embed code snippets." />
 
-      <Panel title="Preset Builder">
-        <form onSubmit={savePreset} className="grid gap-3 md:grid-cols-3">
-          <input className="rounded-md border px-3 py-2 text-sm" placeholder="Preset name" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} required />
-          <input className="rounded-md border px-3 py-2 text-sm" placeholder="Width" value={form.width} onChange={(e) => setForm((p) => ({ ...p, width: e.target.value }))} />
-          <input className="rounded-md border px-3 py-2 text-sm" placeholder="Height" value={form.height} onChange={(e) => setForm((p) => ({ ...p, height: e.target.value }))} />
-          <select className="rounded-md border px-3 py-2 text-sm" value={form.default_mode} onChange={(e) => setForm((p) => ({ ...p, default_mode: e.target.value as EmbedConfig['default_mode'] }))}>
-            <option value="both">both</option>
-            <option value="explore_only">explore_only</option>
-            <option value="guided_only">guided_only</option>
-          </select>
-
-          {([
-            ['show_legend', 'Show legend'],
-            ['show_search', 'Show search'],
-            ['show_sidebar', 'Show sidebar'],
-            ['show_tour_panel', 'Show tour panel'],
-            ['show_branding', 'Show branding'],
-            ['show_cta', 'Show CTA'],
-          ] as const).map(([key, label]) => (
-            <label key={key} className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-              <input
-                type="checkbox"
-                checked={form[key]}
-                onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.checked }))}
-              />
-              {label}
-            </label>
-          ))}
-
-          <Button type="submit" className="md:col-span-3">Save Preset</Button>
-        </form>
-      </Panel>
-
-      <Panel title="Embed Preview">
-        <div className="space-y-3">
-          <iframe src={previewUrl} className="w-full rounded-lg border border-black/10" style={{ height: form.height }} />
-          <textarea readOnly value={iframeCode} className="w-full rounded-md border px-3 py-2 text-xs" rows={4} />
-        </div>
-      </Panel>
-
-      <Panel title="Saved Presets">
-        <div className="space-y-2">
-          {configs.map((config) => (
-            <div key={config.id} className="rounded-lg border border-black/10 bg-white p-3 text-sm">
-              <p className="font-semibold text-[var(--brand-dark)]">{config.name}</p>
-              <p className="text-xs text-black/60">{config.width} x {config.height} | mode: {config.default_mode}</p>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+        <SectionCard title="Preset Builder">
+          <form onSubmit={savePreset} className="form-grid">
+            <div className="form-row md:grid-cols-3">
+              <FormField label="Preset name">
+                <TextInput value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} required />
+              </FormField>
+              <FormField label="Width">
+                <TextInput value={form.width} onChange={(e) => setForm((p) => ({ ...p, width: e.target.value }))} />
+              </FormField>
+              <FormField label="Height">
+                <TextInput value={form.height} onChange={(e) => setForm((p) => ({ ...p, height: e.target.value }))} />
+              </FormField>
             </div>
-          ))}
-        </div>
-      </Panel>
 
-      {message ? <p className="siena-subtitle text-[var(--brand)]">{message}</p> : null}
-    </section>
+            <FormField label="Default mode">
+              <SelectInput value={form.default_mode} onChange={(e) => setForm((p) => ({ ...p, default_mode: e.target.value as EmbedConfig['default_mode'] }))}>
+                <option value="both">both</option>
+                <option value="explore_only">explore only</option>
+                <option value="guided_only">guided only</option>
+              </SelectInput>
+            </FormField>
+
+            <div className="grid gap-2 md:grid-cols-2">
+              {([
+                ['show_legend', 'Show legend'],
+                ['show_search', 'Show search'],
+                ['show_sidebar', 'Show sidebar'],
+                ['show_tour_panel', 'Show tour panel'],
+                ['show_branding', 'Show branding'],
+                ['show_cta', 'Show CTA'],
+              ] as const).map(([key, label]) => (
+                <label key={key} className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2 text-sm">
+                  <input type="checkbox" checked={form[key]} onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.checked }))} />
+                  {label}
+                </label>
+              ))}
+            </div>
+
+            <Button type="submit">Save Preset</Button>
+          </form>
+        </SectionCard>
+
+        <SectionCard title="Embed Preview">
+          <div className="space-y-3">
+            <iframe src={previewUrl} className="w-full rounded-lg border border-[var(--border)] bg-white" style={{ height: form.height }} />
+            <FormField label="Iframe code">
+              <TextArea readOnly value={iframeCode} rows={4} className="font-mono text-xs" />
+            </FormField>
+          </div>
+        </SectionCard>
+      </div>
+
+      <SectionCard title="Saved Presets" subtitle="Reusable embed presets for this map.">
+        {loading ? (
+          <LoadingRows rows={4} />
+        ) : configs.length === 0 ? (
+          <EmptyState title="No embed presets yet" description="Save a preset to quickly reuse embed configurations." />
+        ) : (
+          <div className="space-y-2">
+            {configs.map((config) => (
+              <div key={config.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] p-3 text-sm">
+                <p className="row-title">{config.name}</p>
+                <p className="row-meta">{config.width} x {config.height} | mode: {config.default_mode.replaceAll('_', ' ')}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
+
+      {message ? <StatusMessage>{message}</StatusMessage> : null}
+    </AppShell>
   );
 }

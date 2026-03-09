@@ -1,25 +1,45 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Button, PageHeader, Panel } from '@/components/ui/siena';
+import { useEffect, useMemo, useState } from 'react';
+import { AppShell, Button, EmptyState, PageHeader, SectionCard, StatusMessage } from '@/components/ui/siena';
+import { FormField, SelectInput, TextInput } from '@/components/ui/form-controls';
+import { LoadingRows } from '@/components/ui/loading';
 
 type Department = { id: string; name: string; slug: string; description: string | null };
+type User = { id: string; email: string };
 
 export default function DepartmentsAdminPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [selectedDepartmentId, setSelectedDepartmentId] = useState('');
   const [members, setMembers] = useState<Array<{ user_id: string; role: string; profiles?: { email?: string } }>>([]);
   const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(true);
 
   const [createForm, setCreateForm] = useState({ name: '', slug: '', description: '' });
   const [memberForm, setMemberForm] = useState({ user_id: '', role: 'viewer' });
 
   async function loadDepartments() {
-    const res = await fetch('/api/departments', { cache: 'no-store' });
-    const json = await res.json();
-    if (!res.ok) return setMessage(json.error ?? 'Failed to load departments');
-    setDepartments(json.departments ?? []);
-    if (!selectedDepartmentId && json.departments?.[0]?.id) setSelectedDepartmentId(json.departments[0].id);
+    setLoading(true);
+    const [deptRes, userRes] = await Promise.all([
+      fetch('/api/departments', { cache: 'no-store' }),
+      fetch('/api/users', { cache: 'no-store' }),
+    ]);
+
+    const deptJson = await deptRes.json();
+    const userJson = await userRes.json();
+
+    if (!deptRes.ok) {
+      setMessage(deptJson.error ?? 'Failed to load departments');
+      setLoading(false);
+      return;
+    }
+    setDepartments(deptJson.departments ?? []);
+    setUsers((userJson.users ?? []).map((u: any) => ({ id: u.id, email: u.email })));
+    if (!selectedDepartmentId && deptJson.departments?.[0]?.id) {
+      setSelectedDepartmentId(deptJson.departments[0].id);
+    }
+    setLoading(false);
   }
 
   async function loadMembers(departmentId: string) {
@@ -37,6 +57,8 @@ export default function DepartmentsAdminPage() {
   useEffect(() => {
     if (selectedDepartmentId) void loadMembers(selectedDepartmentId);
   }, [selectedDepartmentId]);
+
+  const userById = useMemo(() => Object.fromEntries(users.map((u) => [u.id, u.email])), [users]);
 
   async function createDepartment(e: React.FormEvent) {
     e.preventDefault();
@@ -71,57 +93,88 @@ export default function DepartmentsAdminPage() {
   }
 
   return (
-    <section className="space-y-6">
-      <PageHeader eyebrow="Administration" title="Departments" subtitle="Create departments and assign members." />
+    <AppShell>
+      <PageHeader eyebrow="Administration" title="Departments" subtitle="Create departments, manage memberships, and assign department roles." />
 
-      <Panel title="Create Department">
-        <form onSubmit={createDepartment} className="grid gap-3 md:grid-cols-4">
-          <input className="rounded-md border px-3 py-2 text-sm" placeholder="Name" value={createForm.name} onChange={(e) => setCreateForm((p) => ({ ...p, name: e.target.value }))} required />
-          <input className="rounded-md border px-3 py-2 text-sm" placeholder="Slug" value={createForm.slug} onChange={(e) => setCreateForm((p) => ({ ...p, slug: e.target.value }))} required />
-          <input className="rounded-md border px-3 py-2 text-sm" placeholder="Description" value={createForm.description} onChange={(e) => setCreateForm((p) => ({ ...p, description: e.target.value }))} />
-          <Button type="submit">Create</Button>
+      <SectionCard title="Create Department">
+        <form onSubmit={createDepartment} className="form-row md:grid-cols-4 md:items-end">
+          <FormField label="Name">
+            <TextInput value={createForm.name} onChange={(e) => setCreateForm((p) => ({ ...p, name: e.target.value }))} required />
+          </FormField>
+          <FormField label="Slug">
+            <TextInput value={createForm.slug} onChange={(e) => setCreateForm((p) => ({ ...p, slug: e.target.value }))} required />
+          </FormField>
+          <FormField label="Description">
+            <TextInput value={createForm.description} onChange={(e) => setCreateForm((p) => ({ ...p, description: e.target.value }))} />
+          </FormField>
+          <Button type="submit">Create Department</Button>
         </form>
-      </Panel>
+      </SectionCard>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Panel title="Department List">
-          <div className="mt-3 space-y-2">
-            {departments.map((department) => (
-              <button
-                key={department.id}
-                onClick={() => setSelectedDepartmentId(department.id)}
-                className={`w-full rounded-lg border p-3 text-left ${selectedDepartmentId === department.id ? 'border-[var(--brand)] bg-[var(--surface-muted)]/25' : 'border-black/10 bg-white'}`}
-              >
-                <p className="font-semibold text-[var(--brand-dark)]">{department.name}</p>
-                <p className="text-xs text-black/60">{department.slug}</p>
-              </button>
-            ))}
-          </div>
-        </Panel>
+        <SectionCard title="Department List">
+          {loading ? (
+            <LoadingRows rows={5} />
+          ) : departments.length === 0 ? (
+            <EmptyState title="No departments yet" description="Create a department to start role scoping." />
+          ) : (
+            <div className="space-y-2">
+              {departments.map((department) => (
+                <button
+                  key={department.id}
+                  onClick={() => setSelectedDepartmentId(department.id)}
+                  className={`w-full rounded-lg border p-3 text-left ${selectedDepartmentId === department.id ? 'border-[var(--brand)] bg-[var(--surface-subtle)]' : 'border-[var(--border)] bg-white'}`}
+                >
+                  <p className="row-title">{department.name}</p>
+                  <p className="row-meta">{department.slug}</p>
+                </button>
+              ))}
+            </div>
+          )}
+        </SectionCard>
 
-        <Panel title="Members">
-          <form onSubmit={addMember} className="mt-3 grid gap-2">
-            <input className="rounded-md border px-3 py-2 text-sm" placeholder="User UUID" value={memberForm.user_id} onChange={(e) => setMemberForm((p) => ({ ...p, user_id: e.target.value }))} required />
-            <select className="rounded-md border px-3 py-2 text-sm" value={memberForm.role} onChange={(e) => setMemberForm((p) => ({ ...p, role: e.target.value }))}>
-              <option value="viewer">viewer</option>
-              <option value="editor">editor</option>
-              <option value="department_head">department_head</option>
-            </select>
+        <SectionCard title="Members" subtitle="Assign users to selected department.">
+          <form onSubmit={addMember} className="form-grid">
+            <div className="form-row md:grid-cols-2">
+              <FormField label="User">
+                <SelectInput
+                  value={memberForm.user_id}
+                  onChange={(e) => setMemberForm((p) => ({ ...p, user_id: e.target.value }))}
+                  required
+                >
+                  <option value="">Select user</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>{u.email}</option>
+                  ))}
+                </SelectInput>
+              </FormField>
+              <FormField label="Department role">
+                <SelectInput value={memberForm.role} onChange={(e) => setMemberForm((p) => ({ ...p, role: e.target.value }))}>
+                  <option value="viewer">viewer</option>
+                  <option value="editor">editor</option>
+                  <option value="department_head">department head</option>
+                </SelectInput>
+              </FormField>
+            </div>
             <Button type="submit">Add Member</Button>
           </form>
 
           <div className="mt-4 space-y-2">
-            {members.map((member) => (
-              <div key={member.user_id} className="rounded-lg border border-black/10 bg-white p-3 text-sm">
-                <p className="font-semibold text-[var(--brand-dark)]">{member.profiles?.email ?? member.user_id}</p>
-                <p className="text-xs text-black/60">{member.role}</p>
-              </div>
-            ))}
+            {members.length === 0 ? (
+              <EmptyState title="No members in this department" />
+            ) : (
+              members.map((member) => (
+                <div key={member.user_id} className="rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] p-3 text-sm">
+                  <p className="row-title">{member.profiles?.email ?? userById[member.user_id] ?? 'Unknown user'}</p>
+                  <p className="row-meta">{member.role}</p>
+                </div>
+              ))
+            )}
           </div>
-        </Panel>
+        </SectionCard>
       </div>
 
-      {message ? <p className="siena-subtitle text-[var(--brand)]">{message}</p> : null}
-    </section>
+      {message ? <StatusMessage>{message}</StatusMessage> : null}
+    </AppShell>
   );
 }

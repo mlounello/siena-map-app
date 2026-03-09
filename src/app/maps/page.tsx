@@ -20,6 +20,7 @@ type PublicMap = {
   title: string;
   intro_text: string | null;
   primary_department_id: string;
+  departments?: { name?: string | null } | Array<{ name?: string | null }> | null;
   map_type: string;
 };
 
@@ -55,7 +56,14 @@ export default function PublicDirectoryPage() {
     void load();
   }, []);
 
-  const departmentOptions = useMemo(() => Array.from(new Set(allMaps.map((m) => m.primary_department_id))), [allMaps]);
+  const departmentOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const m of allMaps) {
+      const joined = Array.isArray(m.departments) ? m.departments[0] : m.departments;
+      map.set(m.primary_department_id, joined?.name || 'Department');
+    }
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [allMaps]);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -85,9 +93,9 @@ export default function PublicDirectoryPage() {
             <FormField label="Department">
               <SelectInput value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}>
                 <option value="">All departments</option>
-                {departmentOptions.map((id) => (
-                  <option key={id} value={id}>
-                    {id}
+                {departmentOptions.map((dept) => (
+                  <option key={dept.id} value={dept.id}>
+                    {dept.name}
                   </option>
                 ))}
               </SelectInput>
@@ -125,7 +133,9 @@ export default function PublicDirectoryPage() {
                 <Badge label={map.map_type.replaceAll('_', ' ')} tone="info" />
               </div>
               <p className="mt-2 text-sm text-black/75">{map.intro_text ?? 'No description provided yet.'}</p>
-              <p className="row-meta mt-2">Department {map.primary_department_id}</p>
+              <p className="row-meta mt-2">
+                {(Array.isArray(map.departments) ? map.departments[0]?.name : map.departments?.name) || 'Department'}
+              </p>
               <div className="mt-4 action-bar">
                 <Link href={`/maps/${map.slug}`}>
                   <Button>Open Map</Button>

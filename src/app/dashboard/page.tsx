@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
-import { SectionCard } from '@/components/dashboard/section-card';
-import { PageHeader, Panel } from '@/components/ui/siena';
+import { SectionCard as DashboardCard } from '@/components/dashboard/section-card';
+import { AppShell, PageHeader, SectionCard } from '@/components/ui/siena';
 import { getCurrentProfile } from '@/lib/auth/roles';
 
 export default async function DashboardPage() {
@@ -8,47 +8,47 @@ export default async function DashboardPage() {
   if (!profile) redirect('/login');
 
   return (
-    <section className="space-y-6">
+    <AppShell>
       <PageHeader
         eyebrow="Internal Workspace"
         title="Dashboard"
-        subtitle={`Signed in as ${profile.email} (${profile.role}).`}
+        subtitle={`Signed in as ${profile.email} (${profile.role.replaceAll('_', ' ')}).`}
       />
 
-      <Panel>
+      <SectionCard title="Workspace Entrypoints" subtitle="Navigate to governance, moderation, and public preview tools.">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <SectionCard
+          <DashboardCard
             title="Maps Console"
             description="Create maps, edit map settings, and run shell/publish workflows."
             href="/dashboard/maps"
           />
-          <SectionCard
+          <DashboardCard
             title="Review Queue"
             description="Review submitted/rejected map and POI items by role scope."
             href="/dashboard/review-queue"
           />
-          <SectionCard
+          <DashboardCard
             title="Departments"
             description="Manage departments and department memberships."
             href="/dashboard/admin/departments"
           />
-          <SectionCard
+          <DashboardCard
             title="Users & Roles"
             description="Assign platform roles for internal accounts."
             href="/dashboard/admin/users"
           />
-          <SectionCard
+          <DashboardCard
             title="Categories"
             description="Manage global category library and lifecycle states."
             href="/dashboard/admin/categories"
           />
-          <SectionCard
+          <DashboardCard
             title="Public Directory"
             description="Preview public-facing map directory and map pages."
             href="/maps"
           />
         </div>
-      </Panel>
-    </section>
+      </SectionCard>
+    </AppShell>
   );
 }

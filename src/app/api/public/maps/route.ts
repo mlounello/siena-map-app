@@ -11,7 +11,9 @@ export async function GET(request: Request) {
 
   let query = db
     .from('maps')
-    .select('id, slug, title, intro_text, primary_department_id, visibility, map_type, display_mode, published_at')
+    .select(
+      'id, slug, title, intro_text, primary_department_id, visibility, map_type, display_mode, published_at, departments:primary_department_id(name)'
+    )
     .eq('publication_status', 'published')
     .eq('visibility', 'public')
     .order('published_at', { ascending: false })
