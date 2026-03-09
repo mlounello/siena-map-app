@@ -42,7 +42,7 @@ function activeNavKey(pathname: string): NavItem['key'] | null {
 function navItemClass(isActive: boolean) {
   return isActive
     ? 'inline-flex h-10 items-center rounded-xl bg-white px-4 text-sm font-semibold text-[var(--brand-dark)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.5)]'
-    : 'inline-flex h-10 items-center rounded-xl px-4 text-sm font-medium text-white/88 hover:bg-white/14 hover:text-white';
+    : 'inline-flex h-10 items-center rounded-xl px-4 text-sm font-medium text-white/88 transition hover:bg-white/14 hover:text-white';
 }
 
 function mobileNavItemClass(isActive: boolean) {
@@ -157,7 +157,7 @@ export function Header() {
     const rightAction = pathname === '/login' ? { href: '/maps', label: 'Public Maps' } : { href: '/login', label: user ? 'Dashboard' : 'Sign In' };
 
     return (
-      <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-gradient-to-r from-[var(--brand)] via-[var(--brand)] to-[var(--brand-dark)] text-white shadow-[0_6px_24px_rgba(16,46,34,0.18)]">
+      <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-gradient-to-r from-[var(--brand)] via-[var(--brand)] to-[var(--brand-dark)] text-white shadow-[0_6px_24px_rgba(16,46,34,0.18)] backdrop-blur supports-[backdrop-filter]:bg-[linear-gradient(to_right,var(--brand),var(--brand),var(--brand-dark))]/95">
         <div className="mx-auto flex min-h-[74px] w-full max-w-[76rem] items-center justify-between gap-4 px-4 py-2.5 md:px-6">
           <BrandLockup compact={false} />
           <Link
@@ -172,7 +172,7 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-gradient-to-r from-[var(--brand)] via-[var(--brand)] to-[var(--brand-dark)] text-white shadow-[0_6px_24px_rgba(16,46,34,0.18)]">
+    <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-gradient-to-r from-[var(--brand)] via-[var(--brand)] to-[var(--brand-dark)] text-white shadow-[0_6px_24px_rgba(16,46,34,0.18)] backdrop-blur supports-[backdrop-filter]:bg-[linear-gradient(to_right,var(--brand),var(--brand),var(--brand-dark))]/95">
       <div className="mx-auto w-full max-w-[76rem] px-4 py-2.5 md:px-6 md:py-3">
         <div className="hidden min-h-[66px] grid-cols-[minmax(260px,320px)_1fr_minmax(230px,320px)] items-center gap-4 md:grid">
           <div className="flex items-center">

@@ -18,7 +18,7 @@ export function LoadingCard({ title = 'Loading content' }: { title?: string }) {
   return (
     <div className="section-card">
       <div className="section-card-body space-y-3.5">
-        <p className="text-sm font-medium text-[var(--heading)]/80">{title}</p>
+        <p className="text-sm font-medium tracking-[0.01em] text-[var(--heading)]/80">{title}</p>
         <LoadingRows rows={3} />
       </div>
     </div>

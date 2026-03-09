@@ -12,7 +12,7 @@ export default async function DashboardPage() {
       <PageHeader
         eyebrow="Internal Workspace"
         title="Dashboard"
-        subtitle={`Signed in as ${profile.email} (${profile.role.replaceAll('_', ' ')}).`}
+        subtitle={`Signed in as ${profile.email} (${profile.role.replaceAll('_', ' ')}). Navigate core moderation and publishing tools.`}
       />
 
       <SectionCard title="Workspace Entrypoints" subtitle="Navigate to governance, moderation, and public preview tools.">

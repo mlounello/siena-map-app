@@ -31,21 +31,23 @@ export default function LoginPage() {
   }
 
   return (
-    <section className="mx-auto max-w-xl space-y-6">
+    <section className="mx-auto max-w-2xl space-y-7">
       <PageHeader
         eyebrow="Authentication"
         title="Sign In"
-        subtitle="Use your Siena Google account to access internal maps and workflows."
+        subtitle="Use your Siena Google account to access map governance, approvals, and publishing workflows."
       />
 
-      <Panel>
+      <Panel title="Continue with Google" subtitle="Secure sign-in for authorized Siena users.">
         <div className="space-y-4">
           <Button type="button" onClick={signInWithGoogle} disabled={loading} className="w-full justify-center">
             {loading ? 'Redirecting…' : 'Continue with Google'}
           </Button>
-          {error ? <p className="siena-subtitle text-[var(--accent-red)]">{error}</p> : null}
+
+          {error ? <p className="text-sm text-[var(--accent-red)]">{error}</p> : null}
+
           {callbackError ? (
-            <p className="siena-subtitle text-[var(--accent-red)]">
+            <p className="text-sm text-[var(--accent-red)]">
               OAuth error: {callbackError}
               {callbackMessage ? ` (${callbackMessage})` : ''}
             </p>

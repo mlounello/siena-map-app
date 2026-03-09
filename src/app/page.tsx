@@ -7,16 +7,16 @@ export default function HomePage() {
       <PageHeader
         eyebrow="Siena University"
         title="Siena Maps Platform"
-        subtitle="Branded internal map publishing platform for departments, approvals, and polished public experiences."
+        subtitle="Create, govern, and publish Siena-branded interactive maps for internal and public experiences."
       />
 
-      <Panel title="Workspace Entrypoints" subtitle="Start from internal governance or public discovery.">
+      <Panel title="Get Started" subtitle="Choose your internal workspace or browse public map experiences.">
         <div className="flex flex-wrap gap-3">
           <Link href="/dashboard">
             <Button>Open Dashboard</Button>
           </Link>
           <Link href="/maps">
-            <Button variant="secondary">Open Public Directory</Button>
+            <Button variant="secondary">Browse Public Maps</Button>
           </Link>
         </div>
       </Panel>
