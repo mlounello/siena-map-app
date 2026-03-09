@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { InternalBuilderMap } from '@/components/map/internal-builder-map';
+import { Badge, Button, PageHeader, Panel } from '@/components/ui';
 
 type Poi = {
   id: string;
@@ -26,6 +27,13 @@ type MapRecord = {
   primary_department_id: string;
 };
 
+function statusTone(status: string): 'neutral' | 'warning' | 'success' | 'danger' {
+  if (status === 'published') return 'success';
+  if (status === 'submitted_for_review') return 'warning';
+  if (status === 'rejected') return 'danger';
+  return 'neutral';
+}
+
 export default function PoisPage() {
   const params = useParams<{ id: string }>();
   const mapId = params.id;
@@ -41,7 +49,7 @@ export default function PoisPage() {
     category_id: '',
     owning_department_id: '',
     stop_number: '',
-    pin_color: '#8b1f41',
+    pin_color: '#006b54',
   });
 
   async function load(id: string) {
@@ -108,10 +116,7 @@ export default function PoisPage() {
       body: JSON.stringify(payload),
     });
     const json = await res.json();
-    if (!res.ok) {
-      setMessage(json.error ?? 'Failed to create POI');
-      return;
-    }
+    if (!res.ok) return setMessage(json.error ?? 'Failed to create POI');
 
     setForm((p) => ({ ...p, title: '', description: '', stop_number: '' }));
     await load(mapId);
@@ -126,10 +131,7 @@ export default function PoisPage() {
     });
 
     const json = await res.json();
-    if (!res.ok) {
-      setMessage(json.error ?? 'Failed to move POI marker');
-      return;
-    }
+    if (!res.ok) return setMessage(json.error ?? 'Failed to move POI marker');
 
     setMessage('POI coordinates updated.');
     await load(mapId);
@@ -142,71 +144,77 @@ export default function PoisPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
+
     const json = await res.json();
-    if (!res.ok) {
-      setMessage(json.error ?? `Failed to ${action} POI`);
-      return;
-    }
+    if (!res.ok) return setMessage(json.error ?? `Failed to ${action} POI`);
+
     await load(mapId);
     setMessage(`POI ${action} complete.`);
   }
 
   return (
     <section className="space-y-6">
-      <h1 className="text-3xl font-semibold tracking-tight text-[var(--brand)]">POI Manager + Builder Canvas</h1>
-
-      <InternalBuilderMap
-        center={builderCenter}
-        zoom={mapRecord?.default_zoom ?? 16}
-        pois={pois}
-        draftLat={Number(form.latitude)}
-        draftLng={Number(form.longitude)}
-        onPick={(lat, lng) =>
-          setForm((p) => ({
-            ...p,
-            latitude: lat.toFixed(6),
-            longitude: lng.toFixed(6),
-          }))
-        }
-        onMovePoi={movePoi}
+      <PageHeader
+        eyebrow="Map Builder"
+        title="POI Manager"
+        subtitle="Create stops, place coordinates from the map, and manage workflow status."
       />
 
-      <form onSubmit={createPoi} className="grid gap-3 rounded-xl border border-black/10 bg-white p-4 md:grid-cols-3">
-        <input className="rounded-md border border-black/15 px-3 py-2 text-sm" placeholder="Title" value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} required />
-        <input className="rounded-md border border-black/15 px-3 py-2 text-sm" placeholder="Latitude" value={form.latitude} onChange={(e) => setForm((p) => ({ ...p, latitude: e.target.value }))} required />
-        <input className="rounded-md border border-black/15 px-3 py-2 text-sm" placeholder="Longitude" value={form.longitude} onChange={(e) => setForm((p) => ({ ...p, longitude: e.target.value }))} required />
-        <textarea className="rounded-md border border-black/15 px-3 py-2 text-sm md:col-span-3" rows={3} placeholder="Description" value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
-        <select className="rounded-md border border-black/15 px-3 py-2 text-sm" value={form.category_id} onChange={(e) => setForm((p) => ({ ...p, category_id: e.target.value }))}>
-          <option value="">Category (optional)</option>
-          {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-        <input className="rounded-md border border-black/15 px-3 py-2 text-sm" placeholder="Owning department UUID" value={form.owning_department_id} onChange={(e) => setForm((p) => ({ ...p, owning_department_id: e.target.value }))} required />
-        <input className="rounded-md border border-black/15 px-3 py-2 text-sm" placeholder="Stop #" value={form.stop_number} onChange={(e) => setForm((p) => ({ ...p, stop_number: e.target.value }))} />
-        <button className="rounded-md bg-[var(--brand)] px-3 py-2 text-sm font-medium text-white md:col-span-3" type="submit">Create POI</button>
-      </form>
+      <Panel title="Builder Canvas">
+        <InternalBuilderMap
+          center={builderCenter}
+          zoom={mapRecord?.default_zoom ?? 16}
+          pois={pois}
+          draftLat={Number(form.latitude)}
+          draftLng={Number(form.longitude)}
+          onPick={(lat, lng) => setForm((p) => ({ ...p, latitude: lat.toFixed(6), longitude: lng.toFixed(6) }))}
+          onMovePoi={movePoi}
+        />
+      </Panel>
 
-      {message ? <p className="text-sm text-[var(--brand)]">{message}</p> : null}
+      <Panel title="Create POI">
+        <form onSubmit={createPoi} className="grid gap-3 md:grid-cols-3">
+          <input className="rounded-md border px-3 py-2 text-sm" placeholder="Title" value={form.title} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} required />
+          <input className="rounded-md border px-3 py-2 text-sm" placeholder="Latitude" value={form.latitude} onChange={(e) => setForm((p) => ({ ...p, latitude: e.target.value }))} required />
+          <input className="rounded-md border px-3 py-2 text-sm" placeholder="Longitude" value={form.longitude} onChange={(e) => setForm((p) => ({ ...p, longitude: e.target.value }))} required />
+          <textarea className="rounded-md border px-3 py-2 text-sm md:col-span-3" rows={3} placeholder="Description" value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
+          <select className="rounded-md border px-3 py-2 text-sm" value={form.category_id} onChange={(e) => setForm((p) => ({ ...p, category_id: e.target.value }))}>
+            <option value="">Category (optional)</option>
+            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <input className="rounded-md border px-3 py-2 text-sm" placeholder="Owning department UUID" value={form.owning_department_id} onChange={(e) => setForm((p) => ({ ...p, owning_department_id: e.target.value }))} required />
+          <input className="rounded-md border px-3 py-2 text-sm" placeholder="Stop #" value={form.stop_number} onChange={(e) => setForm((p) => ({ ...p, stop_number: e.target.value }))} />
+          <Button type="submit" className="md:col-span-3">Create POI</Button>
+        </form>
+      </Panel>
 
-      <div className="space-y-3">
-        {pois.map((poi) => (
-          <article key={poi.id} className="rounded-xl border border-black/10 bg-white p-4">
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div>
-                <h2 className="font-semibold">{poi.stop_number ? `${poi.stop_number}. ` : ''}{poi.title}</h2>
-                <p className="text-xs text-black/60">Status: {poi.status} | Dept: {poi.owning_department_id} | Creator: {poi.created_by ?? 'n/a'}</p>
-                <p className="text-xs text-black/60">{poi.latitude.toFixed(6)}, {poi.longitude.toFixed(6)}</p>
+      {message ? <p className="siena-subtitle text-[var(--brand)]">{message}</p> : null}
+
+      <Panel title="POI List">
+        <div className="space-y-3">
+          {pois.map((poi) => (
+            <article key={poi.id} className="rounded-xl border border-black/10 bg-white p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="font-semibold text-[var(--brand-dark)]">{poi.stop_number ? `${poi.stop_number}. ` : ''}{poi.title}</h2>
+                  <div className="mt-1 flex flex-wrap gap-2">
+                    <Badge label={poi.status.replaceAll('_', ' ')} tone={statusTone(poi.status)} />
+                    <Badge label={`Dept ${poi.owning_department_id}`} tone="info" />
+                  </div>
+                  <p className="mt-1 text-xs text-black/60">{poi.latitude.toFixed(6)}, {poi.longitude.toFixed(6)}</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="secondary" onClick={() => actionPoi(poi.id, 'submit')}>Submit</Button>
+                  <Button variant="secondary" onClick={() => actionPoi(poi.id, 'approve')}>Approve</Button>
+                  <Button variant="danger" onClick={() => actionPoi(poi.id, 'reject')}>Reject</Button>
+                  <Button onClick={() => actionPoi(poi.id, 'publish')}>Publish</Button>
+                </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <button onClick={() => actionPoi(poi.id, 'submit')} className="rounded-md border border-black/15 px-2 py-1 text-xs">Submit</button>
-                <button onClick={() => actionPoi(poi.id, 'approve')} className="rounded-md border border-black/15 px-2 py-1 text-xs">Approve</button>
-                <button onClick={() => actionPoi(poi.id, 'reject')} className="rounded-md border border-black/15 px-2 py-1 text-xs">Reject</button>
-                <button onClick={() => actionPoi(poi.id, 'publish')} className="rounded-md bg-[var(--brand)] px-2 py-1 text-xs text-white">Publish</button>
-              </div>
-            </div>
-            {poi.description ? <p className="mt-2 text-sm text-black/75">{poi.description}</p> : null}
-          </article>
-        ))}
-      </div>
+              {poi.description ? <p className="mt-2 text-sm text-black/75">{poi.description}</p> : null}
+            </article>
+          ))}
+        </div>
+      </Panel>
     </section>
   );
 }

@@ -32,3 +32,12 @@ Phase 1 scaffold for Siena's internal map publishing platform.
 - Default app schema: `app_siena_maps`
 - Health route: `/api/health`
 - Owner bootstrap route: `POST /api/admin/bootstrap-owner` (requires authenticated Google session + `OWNER_EMAIL`)
+
+## UI System (Required for New Pages)
+
+- Standards: `docs/siena-ui-standards.md`
+- Merge checklist: `docs/ui-checklist.md`
+- Shared primitives:
+  - `src/components/ui/siena.tsx`
+  - `src/components/ui/page-scaffold.tsx`
+  - `src/components/ui/form-controls.tsx`
