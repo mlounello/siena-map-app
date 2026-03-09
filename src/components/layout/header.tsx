@@ -177,11 +177,11 @@ export function Header() {
                   key={item.key}
                   href={item.href}
                   className={active
-                    ? 'inline-flex h-9 items-center gap-2 rounded-md bg-white px-3.5 text-sm font-semibold text-[var(--brand-dark)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.55)] hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/65 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--brand)]'
+                    ? 'inline-flex h-9 items-center gap-2 rounded-md bg-white px-3.5 text-sm font-semibold !text-[var(--brand-dark)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.55)] hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/65 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--brand)]'
                     : 'inline-flex h-9 items-center gap-2 rounded-md px-3.5 text-sm font-semibold text-white/95 transition hover:bg-white/18 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/65 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--brand)]'}
                 >
                   <Icon className={`h-3.5 w-3.5 ${active ? 'text-[var(--brand-dark)]' : 'text-white/90'}`} />
-                  <span>{item.label}</span>
+                  <span className={active ? 'text-[var(--brand-dark)]' : 'text-white'}>{item.label}</span>
                 </Link>
               );
             })}
@@ -272,11 +272,11 @@ export function Header() {
                   key={item.key}
                   href={item.href}
                   className={`${active
-                    ? 'inline-flex h-9 items-center gap-1.5 rounded-md bg-white px-3 text-xs font-semibold text-[var(--brand-dark)] hover:bg-white'
+                    ? 'inline-flex h-9 items-center gap-1.5 rounded-md bg-white px-3 text-xs font-semibold !text-[var(--brand-dark)] hover:bg-white'
                     : 'inline-flex h-9 items-center gap-1.5 rounded-md border border-white/30 bg-white/12 px-3 text-xs font-semibold text-white/95 hover:bg-white/20'} shrink-0`}
                 >
                   <Icon className={`h-3.5 w-3.5 ${active ? 'text-[var(--brand-dark)]' : 'text-white/90'}`} />
-                  <span>{item.label}</span>
+                  <span className={active ? 'text-[var(--brand-dark)]' : 'text-white'}>{item.label}</span>
                 </Link>
               );
             })}
