@@ -66,9 +66,6 @@ export function InternalBuilderMap({
   const guideLine = sorted.map((poi) => [poi.latitude, poi.longitude] as [number, number]);
   const categoryById = useMemo(() => new Map(categories.map((category) => [category.id, category])), [categories]);
   const tilePreset = resolveTilePreset(themePreset);
-  const tileLayerProps = tilePreset.subdomains
-    ? { subdomains: tilePreset.subdomains as any }
-    : {};
 
   function getMarkerIcon(poi: Poi) {
     if (!leafletModule) return undefined;
@@ -119,7 +116,6 @@ export function InternalBuilderMap({
             attribution={tilePreset.attribution}
             url={tilePreset.url}
             maxZoom={tilePreset.maxZoom}
-            {...tileLayerProps}
           />
           <MapClickCapture onPick={onPick} />
 

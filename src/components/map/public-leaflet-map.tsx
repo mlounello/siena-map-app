@@ -128,9 +128,6 @@ export function PublicLeafletMap({
   const activeStop = stops[activeIndex] ?? null;
   const guidedLine = stops.map((stop) => [stop.latitude, stop.longitude] as [number, number]);
   const tilePreset = resolveTilePreset(themePreset);
-  const tileLayerProps = tilePreset.subdomains
-    ? { subdomains: tilePreset.subdomains as any }
-    : {};
 
   function getMarkerIcon(poi: Poi) {
     if (!leafletModule) return undefined;
@@ -194,7 +191,6 @@ export function PublicLeafletMap({
               attribution={tilePreset.attribution}
               url={tilePreset.url}
               maxZoom={tilePreset.maxZoom}
-              {...tileLayerProps}
             />
 
             {explicitRoutes.length > 0
