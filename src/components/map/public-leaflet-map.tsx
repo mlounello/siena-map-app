@@ -41,6 +41,13 @@ type RouteConnection = {
   status?: string | null;
 };
 
+type RoutedLine = {
+  id: string;
+  positions: [number, number][];
+  color: string;
+  weight: number;
+};
+
 function FlyToStop({ target }: { target: LatLngExpression | null }) {
   const map = useMap();
   useEffect(() => {
@@ -69,6 +76,7 @@ export function PublicLeafletMap({
   );
   const [activeIndex, setActiveIndex] = useState(0);
   const [leafletModule, setLeafletModule] = useState<typeof import('leaflet') | null>(null);
+  const [snappedRoutes, setSnappedRoutes] = useState<Record<string, [number, number][]>>({});
   const markerIconCache = useRef<Map<string, any>>(new Map());
 
   useEffect(() => {
@@ -114,7 +122,7 @@ export function PublicLeafletMap({
             weight: route.line_thickness || 4,
           };
         })
-        .filter((route): route is { id: string; positions: [number, number][]; color: string; weight: number } => !!route),
+        .filter((route): route is RoutedLine => !!route),
     [pointsById, routeConnections]
   );
 
@@ -128,6 +136,7 @@ export function PublicLeafletMap({
   const activeStop = stops[activeIndex] ?? null;
   const guidedLine = stops.map((stop) => [stop.latitude, stop.longitude] as [number, number]);
   const tilePreset = resolveTilePreset(themePreset);
+  const showGuidedLines = uiMode === 'guided' || displayMode === 'guided_only';
 
   function getMarkerIcon(poi: Poi) {
     if (!leafletModule) return undefined;
@@ -154,6 +163,50 @@ export function PublicLeafletMap({
     markerIconCache.current.set(cacheKey, icon);
     return icon;
   }
+
+  useEffect(() => {
+    if (!showGuidedLines) return;
+    if (explicitRoutes.length === 0) return;
+
+    const controller = new AbortController();
+
+    async function snapToRoads() {
+      const next: Record<string, [number, number][]> = {};
+
+      await Promise.all(
+        explicitRoutes.map(async (route) => {
+          const from = route.positions[0];
+          const to = route.positions[1];
+          if (!from || !to) return;
+
+          const fromLng = from[1];
+          const fromLat = from[0];
+          const toLng = to[1];
+          const toLat = to[0];
+
+          const url = `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson`;
+
+          try {
+            const response = await fetch(url, { signal: controller.signal });
+            if (!response.ok) return;
+            const payload = await response.json();
+            const coords: Array<[number, number]> | undefined = payload?.routes?.[0]?.geometry?.coordinates;
+            if (!coords || coords.length < 2) return;
+
+            next[route.id] = coords.map((coord) => [coord[1], coord[0]]);
+          } catch {
+            // Keep straight-line fallback for this segment.
+          }
+        })
+      );
+
+      if (!controller.signal.aborted) setSnappedRoutes(next);
+    }
+
+    void snapToRoads();
+
+    return () => controller.abort();
+  }, [explicitRoutes, showGuidedLines]);
 
   return (
     <section className="grid gap-4 lg:grid-cols-[2fr_1fr]">
@@ -197,17 +250,17 @@ export function PublicLeafletMap({
               />
             ))}
 
-            {explicitRoutes.length > 0
+            {showGuidedLines && explicitRoutes.length > 0
               ? explicitRoutes.map((route) => (
                   <Polyline
                     key={route.id}
-                    positions={route.positions}
+                    positions={snappedRoutes[route.id] ?? route.positions}
                     pathOptions={{ color: route.color, weight: route.weight, opacity: 0.85 }}
                   />
                 ))
               : null}
 
-            {explicitRoutes.length === 0 && guidedLine.length > 1 ? (
+            {showGuidedLines && explicitRoutes.length === 0 && guidedLine.length > 1 ? (
               <Polyline positions={guidedLine} pathOptions={{ color: '#8b1f41', weight: 4, opacity: 0.85 }} />
             ) : null}
 
