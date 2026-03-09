@@ -67,7 +67,7 @@ function initialsFromUser(user: HeaderUser | null) {
 function BrandLockup({ compact = false }: { compact?: boolean }) {
   return (
     <Link href="/" className="inline-flex min-w-0 items-center gap-3">
-      <span
+        <span
         className={`inline-flex items-center justify-center rounded-md bg-[var(--brand-yellow)] font-bold tracking-[0.14em] text-[var(--brand-dark)] shadow-sm ${
           compact ? 'h-10 w-10 text-[11px]' : 'h-12 w-12 text-[12px]'
         }`}
@@ -76,8 +76,8 @@ function BrandLockup({ compact = false }: { compact?: boolean }) {
       </span>
       <span className="min-w-0 leading-tight">
         <span
-          className={`block truncate font-semibold uppercase text-white ${
-            compact ? 'text-[1.12rem] tracking-[0.05em]' : 'text-[1.28rem] tracking-[0.05em]'
+          className={`block truncate font-semibold text-white ${
+            compact ? 'text-[1.08rem] tracking-[0.01em]' : 'text-[1.22rem] tracking-[0.01em]'
           }`}
         >
           Siena Maps

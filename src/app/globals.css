@@ -23,9 +23,10 @@
   --radius-lg: 16px;
   --shadow-sm: 0 1px 2px rgba(27, 73, 50, 0.08);
   --shadow-md: 0 8px 24px rgba(20, 54, 39, 0.08);
-  --font-headline: var(--font-oswald), 'Arial Narrow', sans-serif;
-  --font-subhead: var(--font-gudea), 'Segoe UI', sans-serif;
-  --font-body: var(--font-merriweather), Georgia, serif;
+  --font-ui: var(--font-inter), 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-headline: var(--font-ui);
+  --font-subhead: var(--font-ui);
+  --font-body: var(--font-ui);
 }
 
 * {
@@ -66,7 +67,7 @@ h6 {
 h1,
 h2 {
   font-family: var(--font-headline);
-  letter-spacing: 0.02em;
+  letter-spacing: -0.01em;
 }
 
 h3,
@@ -130,10 +131,9 @@ textarea {
 
 .section-card-title {
   font-family: var(--font-subhead);
-  font-size: 0.94rem;
+  font-size: 0.98rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
   color: var(--heading);
 }
 
@@ -162,18 +162,18 @@ textarea {
 
 .page-eyebrow {
   font-family: var(--font-subhead);
-  font-size: 0.69rem;
+  font-size: 0.73rem;
   font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+  letter-spacing: 0.08em;
   color: var(--brand);
 }
 
 .page-title {
   font-family: var(--font-headline);
-  font-size: clamp(1.75rem, 3vw, 2.4rem);
-  line-height: 1.08;
+  font-size: clamp(1.7rem, 2.8vw, 2.25rem);
+  line-height: 1.12;
   color: var(--heading);
+  font-weight: 700;
 }
 
 .page-subtitle {
@@ -208,9 +208,8 @@ textarea {
 }
 
 .form-label {
-  font-size: 0.76rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-size: 0.8rem;
+  letter-spacing: 0.01em;
   font-weight: 700;
   color: rgba(22, 63, 47, 0.84);
 }
@@ -273,10 +272,9 @@ textarea {
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
-  font-size: 0.78rem;
+  font-size: 0.86rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
   line-height: 1;
   transition: all 140ms ease;
   white-space: nowrap;
@@ -328,10 +326,9 @@ textarea {
   align-items: center;
   border-radius: 999px;
   padding: 0.16rem 0.5rem;
-  font-size: 0.67rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
   font-family: var(--font-subhead);
 }
 
@@ -374,9 +371,8 @@ textarea {
 .data-table th {
   text-align: left;
   font-family: var(--font-subhead);
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
+  font-size: 0.78rem;
+  letter-spacing: 0.01em;
   color: rgba(31, 42, 36, 0.64);
   padding: 0.62rem 0.72rem;
   border-bottom: 1px solid var(--border);
@@ -450,18 +446,18 @@ textarea {
 /* Backward compatibility for existing class usage */
 .siena-eyebrow {
   font-family: var(--font-subhead);
-  font-size: 0.69rem;
+  font-size: 0.73rem;
   font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+  letter-spacing: 0.08em;
   color: var(--brand);
 }
 
 .siena-title {
   font-family: var(--font-headline);
-  font-size: clamp(1.75rem, 3vw, 2.4rem);
+  font-size: clamp(1.7rem, 2.8vw, 2.25rem);
   color: var(--heading);
-  line-height: 1.08;
+  line-height: 1.12;
+  font-weight: 700;
 }
 
 .siena-subtitle {
@@ -479,10 +475,9 @@ textarea {
 
 .siena-panel-title {
   font-family: var(--font-subhead);
-  font-size: 0.94rem;
+  font-size: 0.98rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
   color: var(--heading);
 }
 
@@ -509,10 +504,9 @@ textarea {
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
-  font-size: 0.78rem;
+  font-size: 0.86rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
   line-height: 1;
   transition: all 140ms ease;
   white-space: nowrap;
@@ -547,10 +541,9 @@ textarea {
   align-items: center;
   border-radius: 999px;
   padding: 0.16rem 0.5rem;
-  font-size: 0.67rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
   font-family: var(--font-subhead);
 }
 
