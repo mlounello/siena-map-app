@@ -86,6 +86,7 @@ export interface MapRecord {
   show_tour_panel: boolean;
   show_branding: boolean;
   show_cta: boolean;
+  require_anchors_for_publish: boolean;
   theme_preset: string;
   created_by: string | null;
   updated_by: string | null;

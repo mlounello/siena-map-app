@@ -4,6 +4,7 @@ import { requireRole } from '@/lib/auth/roles';
 import { createDbClient } from '@/lib/supabase/server';
 import { canEditMap } from '@/lib/auth/access';
 import { hasMinRole } from '@/lib/siena/permissions';
+import { validateMapAnchorsForPublish } from '@/lib/siena/map-publish-validation';
 import type { MapRecord } from '@/types/siena-maps';
 
 const schema = z.object({
@@ -25,7 +26,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { db } = await createDbClient();
   const { data: current, error: readError } = await db
     .from('maps')
-    .select('id, shell_status')
+    .select('id, shell_status, require_anchors_for_publish')
     .eq('id', id)
     .maybeSingle();
 
@@ -36,8 +37,31 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return badRequest('Map shell must be approved before publishing');
   }
 
-  const now = new Date().toISOString();
   const nextStatus = parsed.data.status;
+  if (nextStatus === 'published' && current.require_anchors_for_publish) {
+    const anchorValidation = await validateMapAnchorsForPublish(db, id).catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Failed to validate anchor coverage';
+      return { valid: false, blockers: [], summary: null, error: message };
+    });
+
+    if (!anchorValidation.valid) {
+      if ('error' in anchorValidation && anchorValidation.error) {
+        return serverError(anchorValidation.error);
+      }
+
+      return Response.json(
+        {
+          error: 'Publish blocked: required anchor coverage is incomplete for guided-route continuity.',
+          code: 'anchor_publish_validation_failed',
+          blockers: anchorValidation.blockers,
+          summary: anchorValidation.summary,
+        },
+        { status: 400 }
+      );
+    }
+  }
+
+  const now = new Date().toISOString();
   const publishAt = parsed.data.scheduled_publish_at ?? (nextStatus === 'published' ? now : null);
   const shellStatus = nextStatus === 'archived' ? 'archived' : current.shell_status === 'approved' ? 'approved' : 'approved';
 

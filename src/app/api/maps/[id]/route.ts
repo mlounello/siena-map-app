@@ -21,6 +21,7 @@ const updateMapSchema = z.object({
   show_tour_panel: z.boolean().optional(),
   show_branding: z.boolean().optional(),
   show_cta: z.boolean().optional(),
+  require_anchors_for_publish: z.boolean().optional(),
   theme_preset: z.string().max(80).optional(),
   scheduled_publish_at: z.string().datetime().nullable().optional(),
 });

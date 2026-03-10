@@ -28,6 +28,7 @@ type MapDetail = {
   default_center_lat: number | null;
   default_center_lng: number | null;
   default_zoom: number;
+  require_anchors_for_publish: boolean;
   theme_preset: string | null;
   shell_status: string;
   publication_status: string;
@@ -67,6 +68,7 @@ export default function MapDetailPage() {
         default_center_lat: map.default_center_lat,
         default_center_lng: map.default_center_lng,
         default_zoom: map.default_zoom,
+        require_anchors_for_publish: map.require_anchors_for_publish,
         theme_preset: map.theme_preset,
       }),
     });
@@ -216,7 +218,7 @@ export default function MapDetailPage() {
             />
           </FormField>
 
-          <div className="form-row md:grid-cols-3">
+          <div className="form-row md:grid-cols-4">
             <FormField label="Visibility">
               <SelectInput
                 value={map.visibility}
@@ -244,6 +246,24 @@ export default function MapDetailPage() {
               >
                 <option value="walking">Walking</option>
                 <option value="driving">Driving</option>
+              </SelectInput>
+            </FormField>
+            <FormField
+              label="Require anchors for publish"
+              hint="When enabled, publishing is blocked only for guided-route stops that break anchored route continuity."
+            >
+              <SelectInput
+                value={map.require_anchors_for_publish ? 'true' : 'false'}
+                onChange={(e) =>
+                  setMap((p) =>
+                    p
+                      ? { ...p, require_anchors_for_publish: e.target.value === 'true' }
+                      : p
+                  )
+                }
+              >
+                <option value="false">Disabled</option>
+                <option value="true">Enabled</option>
               </SelectInput>
             </FormField>
           </div>

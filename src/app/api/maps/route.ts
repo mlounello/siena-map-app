@@ -15,6 +15,7 @@ const createMapSchema = z.object({
   default_center_lat: z.number().min(-90).max(90).nullable().optional(),
   default_center_lng: z.number().min(-180).max(180).nullable().optional(),
   default_zoom: z.number().int().min(1).max(22).default(16),
+  require_anchors_for_publish: z.boolean().optional().default(false),
   theme_preset: z.string().max(80).optional(),
 });
 
