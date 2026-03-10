@@ -22,6 +22,15 @@ type CategoryRef = {
   color: string | null;
 };
 
+type RouteConnectionRef = {
+  id: string;
+  from_poi_id: string;
+  to_poi_id: string;
+  line_color: string | null;
+  line_thickness: number | null;
+  status?: string | null;
+};
+
 function MapClickCapture({ onPick }: { onPick: (lat: number, lng: number) => void }) {
   useMapEvents({
     click(e) {
@@ -38,6 +47,7 @@ export function InternalBuilderMap({
   themePreset,
   routeMode = 'walking',
   pois,
+  routeConnections = [],
   categories,
   draftLat,
   draftLng,
@@ -50,6 +60,7 @@ export function InternalBuilderMap({
   themePreset?: string | null;
   routeMode?: 'walking' | 'driving';
   pois: Poi[];
+  routeConnections?: RouteConnectionRef[];
   categories: CategoryRef[];
   draftLat: number;
   draftLng: number;
@@ -76,23 +87,22 @@ export function InternalBuilderMap({
     }
   }, []);
 
-  const sorted = useMemo(
-    () => [...pois].sort((a, b) => (a.stop_number ?? 9999) - (b.stop_number ?? 9999)),
+  const pointsById = useMemo(
+    () => new Map(pois.map((poi) => [poi.id, [poi.latitude, poi.longitude] as [number, number]])),
     [pois]
   );
 
   const straightSegments = useMemo(() => {
-    const segments: Array<[number, number][]> = [];
-    for (let index = 0; index < sorted.length - 1; index += 1) {
-      const from = sorted[index];
-      const to = sorted[index + 1];
-      segments.push([
-        [from.latitude, from.longitude],
-        [to.latitude, to.longitude],
-      ]);
-    }
-    return segments;
-  }, [sorted]);
+    return routeConnections
+      .filter((route) => route.status !== 'archived')
+      .map((route) => {
+        const from = pointsById.get(route.from_poi_id);
+        const to = pointsById.get(route.to_poi_id);
+        if (!from || !to) return null;
+        return [from, to] as [number, number][];
+      })
+      .filter((segment): segment is [number, number][] => !!segment);
+  }, [routeConnections, pointsById]);
   const categoryById = useMemo(() => new Map(categories.map((category) => [category.id, category])), [categories]);
   const tilePreset = resolveTilePreset(themePreset);
 
@@ -160,7 +170,7 @@ export function InternalBuilderMap({
           .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }))
           .map((result) => lineStringToLatLngPairs(result.geometry.coordinates));
 
-        if (!controller.signal.aborted) setSnappedSegments(next);
+                        if (!controller.signal.aborted) setSnappedSegments(next);
       } catch {
         if (!controller.signal.aborted) setSnappedSegments(straightSegments);
       }

@@ -26,6 +26,14 @@ type Poi = {
 
 type Category = { id: string; name: string; icon: string | null; color: string | null };
 type Department = { id: string; name: string };
+type RouteConnection = {
+  id: string;
+  from_poi_id: string;
+  to_poi_id: string;
+  line_color: string | null;
+  line_thickness: number | null;
+  status: 'unpublished' | 'published' | 'archived';
+};
 
 type MapRecord = {
   id: string;
@@ -51,6 +59,7 @@ export default function PoisPage() {
   const [pois, setPois] = useState<Poi[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [routeConnections, setRouteConnections] = useState<RouteConnection[]>([]);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -66,17 +75,19 @@ export default function PoisPage() {
 
   async function load(id: string) {
     setLoading(true);
-    const [poisRes, categoriesRes, mapRes, deptRes] = await Promise.all([
+    const [poisRes, categoriesRes, mapRes, deptRes, routeRes] = await Promise.all([
       fetch(`/api/pois?mapId=${id}`, { cache: 'no-store' }),
       fetch('/api/categories', { cache: 'no-store' }),
       fetch(`/api/maps/${id}`, { cache: 'no-store' }),
       fetch('/api/departments', { cache: 'no-store' }),
+      fetch(`/api/route-connections?mapId=${id}`, { cache: 'no-store' }),
     ]);
 
     const poisJson = await poisRes.json();
     const categoriesJson = await categoriesRes.json();
     const mapJson = await mapRes.json();
     const deptJson = await deptRes.json();
+    const routeJson = await routeRes.json();
 
     const loadedPois: Poi[] = (poisJson.pois ?? []).map((poi: any) => ({
       ...poi,
@@ -89,6 +100,7 @@ export default function PoisPage() {
     setCategories(categoriesJson.categories ?? []);
     setMapRecord(mapJson.map ?? null);
     setDepartments(deptJson.departments ?? []);
+    setRouteConnections(routeJson.routeConnections ?? []);
 
     setForm((p) => ({
       ...p,
@@ -195,6 +207,7 @@ export default function PoisPage() {
               routeMode={mapRecord?.route_mode ?? 'walking'}
               mapId={mapId}
               pois={pois}
+              routeConnections={routeConnections}
               categories={categories}
               draftLat={Number(form.latitude)}
               draftLng={Number(form.longitude)}

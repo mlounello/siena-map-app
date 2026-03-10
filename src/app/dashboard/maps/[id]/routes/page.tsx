@@ -21,7 +21,8 @@ type Connection = {
 
 export default function RouteEditorPage() {
   const params = useParams<{ id: string }>();
-  const mapId = params.id;
+  const mapRouteParam = params.id;
+  const [resolvedMapId, setResolvedMapId] = useState<string>('');
 
   const [pois, setPois] = useState<Poi[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
@@ -38,11 +39,27 @@ export default function RouteEditorPage() {
     status: 'unpublished' as Connection['status'],
   });
 
+  function isUuid(value: string) {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+  }
+
+  async function resolveMapId(param: string) {
+    if (isUuid(param)) return param;
+
+    const res = await fetch('/api/maps', { cache: 'no-store' });
+    const json = await res.json();
+    if (!res.ok) return '';
+
+    const found = (json.maps ?? []).find((map: { id: string; slug: string }) => map.slug === param);
+    return found?.id ?? '';
+  }
+
   async function load() {
+    if (!resolvedMapId) return;
     setLoading(true);
     const [poiRes, connRes] = await Promise.all([
-      fetch(`/api/pois?mapId=${mapId}`, { cache: 'no-store' }),
-      fetch(`/api/route-connections?mapId=${mapId}`, { cache: 'no-store' }),
+      fetch(`/api/pois?mapId=${resolvedMapId}`, { cache: 'no-store' }),
+      fetch(`/api/route-connections?mapId=${resolvedMapId}`, { cache: 'no-store' }),
     ]);
 
     const poiJson = await poiRes.json();
@@ -62,18 +79,30 @@ export default function RouteEditorPage() {
   }
 
   useEffect(() => {
-    if (mapId) void load();
-  }, [mapId]);
+    if (!mapRouteParam) return;
+    void resolveMapId(mapRouteParam).then((id) => {
+      if (!id) {
+        setMessage('Map not found. Use a valid map id or slug.');
+        return;
+      }
+      setResolvedMapId(id);
+    });
+  }, [mapRouteParam]);
+
+  useEffect(() => {
+    if (resolvedMapId) void load();
+  }, [resolvedMapId]);
 
   const poiNameById = useMemo(() => Object.fromEntries(pois.map((p) => [p.id, p.title])), [pois]);
 
   async function createConnection(e: React.FormEvent) {
     e.preventDefault();
+    if (!resolvedMapId) return setMessage('Map id is not resolved yet.');
     const res = await fetch('/api/route-connections', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        map_id: mapId,
+        map_id: resolvedMapId,
         from_poi_id: form.from_poi_id,
         to_poi_id: form.to_poi_id,
         order_index: Number(form.order_index),
@@ -116,6 +145,12 @@ export default function RouteEditorPage() {
     <AppShell>
       <PageHeader eyebrow="Map Builder" title="Route Connection Editor" subtitle="Define explicit route segments and per-connection display styling." />
 
+      {!resolvedMapId ? (
+        <SectionCard title="Resolving map" subtitle="Waiting for map id resolution from route parameter.">
+          <LoadingRows rows={2} />
+        </SectionCard>
+      ) : (
+        <>
       <SectionCard title="Create Connection">
         <form onSubmit={createConnection} className="form-grid">
           <div className="form-row md:grid-cols-4">
@@ -185,6 +220,8 @@ export default function RouteEditorPage() {
           </div>
         )}
       </SectionCard>
+        </>
+      )}
 
       {message ? <StatusMessage>{message}</StatusMessage> : null}
     </AppShell>
