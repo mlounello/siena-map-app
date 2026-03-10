@@ -182,6 +182,9 @@ export interface RoutingDiagnostics {
   route_distance_meters: number | null;
   direct_distance_meters: number | null;
   detour_ratio: number | null;
+  short_hop: boolean;
+  flagged: boolean;
+  flag_reasons: string[];
   duration_seconds: number | null;
   warnings: string[];
 }

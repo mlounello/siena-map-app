@@ -85,6 +85,8 @@ These decisions are active and should be treated as settled unless explicitly re
 - Batch routing endpoint: `/api/routing/segments`
 - Mapbox walking profile for snapped pedestrian routing.
 - GeoJSON normalization and fallback handling in the routing flow.
+- Diagnostics contract is stable across routed and fallback segments.
+- `detour_ratio` is intentionally suppressed for tiny direct distances (`< 5m`) to avoid noisy values.
 
 ### Data Model Highlights
 
