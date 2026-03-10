@@ -202,6 +202,15 @@ export function PublicLeafletMap({
   const guidedLine = stops.map((stop) => [stop.latitude, stop.longitude] as [number, number]);
   const tilePreset = resolveTilePreset(themePreset);
   const showGuidedLines = showRoutes;
+  const hasRouteGroups = routeGroups.length > 1;
+  const hasAnyRouteGeometry = explicitRoutes.length > 0 || guidedLine.length > 1;
+  const routeStateLabel = showRoutes ? 'Visible' : 'Hidden';
+  const routeSelectionLabel =
+    selectedRouteGroup === 'all'
+      ? hasRouteGroups
+        ? 'Full route'
+        : 'Primary route'
+      : routeGroups.find((group) => group.key === selectedRouteGroup)?.label ?? 'Route segment';
 
   const selectedPoi = useMemo(() => {
     if (selectedPoiId) {
@@ -298,6 +307,9 @@ export function PublicLeafletMap({
           <p className="text-sm font-medium">Interactive Map</p>
           <div className="flex items-center gap-3">
             <p className="text-xs text-black/65">{tilePreset.label}</p>
+            <span className="rounded-full border border-black/15 bg-[var(--surface-subtle)] px-2 py-0.5 text-[11px] font-semibold text-black/70">
+              Route {routeStateLabel}
+            </span>
             <button
               type="button"
               onClick={() => setShowRoutes((current) => !current)}
@@ -309,13 +321,14 @@ export function PublicLeafletMap({
             >
               {showRoutes ? 'Hide Route' : 'Show Route'}
             </button>
-            {showRoutes && routeGroups.length > 1 ? (
+            {hasRouteGroups ? (
               <select
-                className="rounded-md border border-black/15 bg-white px-2.5 py-1 text-xs"
+                className="rounded-md border border-black/15 bg-white px-2.5 py-1 text-xs disabled:cursor-not-allowed disabled:bg-black/5 disabled:text-black/40"
                 value={selectedRouteGroup}
+                disabled={!showRoutes}
                 onChange={(e) => setSelectedRouteGroup(e.target.value)}
               >
-                <option value="all">All route segments</option>
+                <option value="all">Full route</option>
                 {routeGroups.map((group) => (
                   <option key={group.key} value={group.key}>
                     {group.label} ({group.count})
@@ -393,6 +406,16 @@ export function PublicLeafletMap({
             />
           </MapContainer>
         </div>
+        {!showRoutes && hasAnyRouteGeometry ? (
+          <div className="border-t border-black/10 bg-[var(--surface-muted)]/20 px-4 py-2.5 text-xs text-black/70">
+            Guided route is currently hidden. Use <span className="font-semibold">Show Route</span> to display it.
+          </div>
+        ) : null}
+        {showRoutes && !hasAnyRouteGeometry ? (
+          <div className="border-t border-black/10 bg-[var(--surface-muted)]/20 px-4 py-2.5 text-xs text-black/70">
+            No route lines are available for this map yet.
+          </div>
+        ) : null}
         {stops.length === 0 ? (
           <div className="border-t border-black/10 bg-[var(--surface-muted)]/20 px-4 py-3 text-xs text-black/70">
             No published POIs yet for this map.
@@ -401,7 +424,32 @@ export function PublicLeafletMap({
       </div>
 
       <aside className="rounded-xl border border-black/10 bg-white p-4">
-        <h2 className="font-semibold">Stops</h2>
+        <div className="space-y-2">
+          <h2 className="font-semibold">Stops</h2>
+          <div className="rounded-lg border border-black/10 bg-[var(--surface-muted)]/25 px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.07em] text-black/55">Map key</p>
+            <div className="mt-1.5 grid gap-1.5 text-xs text-black/70">
+              <p className="flex items-center gap-2">
+                <span className="inline-block h-[3px] w-6 rounded-full bg-[#8b1f41]" />
+                Guided route line
+              </p>
+              <p className="flex items-center gap-2">
+                <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[var(--brand)] text-[10px] font-semibold text-white">•</span>
+                Stop marker (category-colored pin)
+              </p>
+              <p className="flex items-center gap-2">
+                <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
+                Internal transfer note (no outdoor line)
+              </p>
+            </div>
+          </div>
+          {hasAnyRouteGeometry ? (
+            <p className="text-xs text-black/65">
+              Route view: <span className="font-semibold text-black/75">{routeSelectionLabel}</span>
+            </p>
+          ) : null}
+        </div>
+
         {selectedPoi ? (
           <div className="mt-3 rounded-lg bg-[var(--surface-muted)] p-3 text-sm">
             <p className="font-medium">
