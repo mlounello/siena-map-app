@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { PublicMapShell } from '@/components/public/public-map-shell';
+import { getCurrentProfile } from '@/lib/auth/roles';
 import { createDbClient } from '@/lib/supabase/server';
 
 export default async function EmbedMapPage({
@@ -12,8 +13,9 @@ export default async function EmbedMapPage({
   const { slug } = await params;
   const qs = await searchParams;
   const { db } = await createDbClient();
+  const profile = await getCurrentProfile();
 
-  const { data: map, error } = await db
+  const { data: publicMap, error: publicError } = await db
     .from('maps')
     .select('*')
     .eq('slug', slug)
@@ -21,7 +23,19 @@ export default async function EmbedMapPage({
     .in('visibility', ['public', 'unlisted'])
     .maybeSingle();
 
-  if (error || !map) notFound();
+  let map = publicMap;
+
+  // Allow authenticated internal preview in embed builder even before publish.
+  if (!map && profile) {
+    const { data: internalMap } = await db
+      .from('maps')
+      .select('*')
+      .eq('slug', slug)
+      .maybeSingle();
+    map = internalMap;
+  }
+
+  if (publicError || !map) notFound();
 
   const { data: pois } = await db
     .from('pois')

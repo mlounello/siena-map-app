@@ -60,11 +60,15 @@ function BrandLockup({ compact = false }: { compact?: boolean }) {
   return (
     <Link href="/" className="inline-flex min-w-0 items-center gap-3 group">
       <span
-        className={`inline-flex items-center justify-center rounded-lg bg-[var(--brand-yellow)] font-bold text-[var(--brand-dark)] shadow-sm transition group-hover:scale-[1.02] ${
-          compact ? 'h-9 w-9 text-[10px] tracking-[0.12em]' : 'h-11 w-11 text-[11px] tracking-[0.13em]'
+        className={`inline-flex overflow-hidden rounded-lg border border-white/35 bg-white/92 shadow-sm transition group-hover:scale-[1.02] ${
+          compact ? 'h-9 w-9' : 'h-11 w-11'
         }`}
       >
-        SI
+        <img
+          src="/siena-logo-square.png"
+          alt="Siena logo"
+          className="h-full w-full object-cover"
+        />
       </span>
       <span className="min-w-0 leading-tight">
         <span className={`block truncate font-semibold text-white ${compact ? 'text-[1.02rem]' : 'text-[1.22rem]'}`}>

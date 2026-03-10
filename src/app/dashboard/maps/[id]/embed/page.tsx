@@ -41,6 +41,7 @@ export default function EmbedPage() {
   const params = useParams<{ id: string }>();
   const mapId = params.id;
 
+  const [mapSlug, setMapSlug] = useState<string>('');
   const [configs, setConfigs] = useState<EmbedConfig[]>([]);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -59,14 +60,28 @@ export default function EmbedPage() {
 
   async function load() {
     setLoading(true);
-    const res = await fetch(`/api/embed-configs?mapId=${mapId}`, { cache: 'no-store' });
-    const json = await res.json();
-    if (!res.ok) {
-      setMessage(json.error ?? 'Failed to load embed presets');
+    const [configsRes, mapRes] = await Promise.all([
+      fetch(`/api/embed-configs?mapId=${mapId}`, { cache: 'no-store' }),
+      fetch(`/api/maps/${mapId}`, { cache: 'no-store' }),
+    ]);
+
+    const configsJson = await configsRes.json();
+    const mapJson = await mapRes.json();
+
+    if (!configsRes.ok) {
+      setMessage(configsJson.error ?? 'Failed to load embed presets');
       setLoading(false);
       return;
     }
-    setConfigs(json.embedConfigs ?? []);
+
+    if (!mapRes.ok || !mapJson?.map?.slug) {
+      setMessage(mapJson.error ?? 'Failed to resolve map slug for embed preview');
+      setLoading(false);
+      return;
+    }
+
+    setMapSlug(mapJson.map.slug);
+    setConfigs(configsJson.embedConfigs ?? []);
     setLoading(false);
   }
 
@@ -89,6 +104,8 @@ export default function EmbedPage() {
   }
 
   const previewUrl = useMemo(() => {
+    if (!mapSlug) return '';
+
     const qs = new URLSearchParams({
       mode: form.default_mode,
       legend: String(form.show_legend),
@@ -99,8 +116,8 @@ export default function EmbedPage() {
       cta: String(form.show_cta),
     });
 
-    return `/embed/${mapId}?${qs.toString()}`;
-  }, [form, mapId]);
+    return `/embed/${mapSlug}?${qs.toString()}`;
+  }, [form, mapSlug]);
 
   const iframeCode = `<iframe src="${typeof window !== 'undefined' ? window.location.origin : ''}${previewUrl}" width="${form.width}" height="${form.height}" style="border:0;" loading="lazy"></iframe>`;
 
@@ -165,12 +182,16 @@ export default function EmbedPage() {
 
         <SectionCard title="Embed Preview" subtitle="Live preview and generated iframe code.">
           <div className="space-y-3">
-            <iframe src={previewUrl} className="w-full rounded-lg border border-[var(--border)] bg-white" style={{ height: form.height }} />
+            {previewUrl ? (
+              <iframe src={previewUrl} className="w-full rounded-lg border border-[var(--border)] bg-white" style={{ height: form.height }} />
+            ) : (
+              <LoadingRows rows={3} />
+            )}
             <FormField label="Preview URL">
-              <TextInput readOnly value={previewUrl} />
+              <TextInput readOnly value={previewUrl || 'Resolving map slug...'} />
             </FormField>
             <FormField label="Iframe code">
-              <TextArea readOnly value={iframeCode} rows={4} className="font-mono text-xs" />
+              <TextArea readOnly value={previewUrl ? iframeCode : 'Resolving map slug...'} rows={4} className="font-mono text-xs" />
             </FormField>
           </div>
         </SectionCard>
