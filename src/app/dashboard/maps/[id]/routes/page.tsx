@@ -7,37 +7,40 @@ import { FormField, SelectInput, TextInput } from '@/components/ui/form-controls
 import { LoadingRows } from '@/components/ui/loading';
 
 type Poi = { id: string; title: string; stop_number: number | null };
-type Connection = {
+type GuidedRoute = { id: string; map_id: string; title: string; is_primary: boolean };
+type GuidedRouteStop = {
   id: string;
-  from_poi_id: string;
-  to_poi_id: string;
-  order_index: number;
-  line_style: string | null;
-  line_color: string | null;
-  line_thickness: number;
-  is_directional: boolean;
-  status: 'unpublished' | 'published' | 'archived';
+  guided_route_id: string;
+  poi_id: string;
+  stop_number: number;
+  poi?: { id: string; title: string; stop_number: number | null } | null;
 };
 
-export default function RouteEditorPage() {
+function reorderItems(ids: string[], sourceId: string, targetId: string) {
+  const sourceIndex = ids.indexOf(sourceId);
+  const targetIndex = ids.indexOf(targetId);
+  if (sourceIndex === -1 || targetIndex === -1 || sourceIndex === targetIndex) return ids;
+
+  const next = [...ids];
+  const [moved] = next.splice(sourceIndex, 1);
+  next.splice(targetIndex, 0, moved);
+  return next;
+}
+
+export default function GuidedRouteEditorPage() {
   const params = useParams<{ id: string }>();
   const mapRouteParam = params.id;
-  const [resolvedMapId, setResolvedMapId] = useState<string>('');
 
+  const [resolvedMapId, setResolvedMapId] = useState<string>('');
   const [pois, setPois] = useState<Poi[]>([]);
-  const [connections, setConnections] = useState<Connection[]>([]);
-  const [message, setMessage] = useState('');
+  const [guidedRoute, setGuidedRoute] = useState<GuidedRoute | null>(null);
+  const [orderedPoiIds, setOrderedPoiIds] = useState<string[]>([]);
+  const [newStopPoiId, setNewStopPoiId] = useState('');
+  const [routeTitle, setRouteTitle] = useState('Primary Guided Route');
+  const [draggingPoiId, setDraggingPoiId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({
-    from_poi_id: '',
-    to_poi_id: '',
-    order_index: '1',
-    line_style: 'solid',
-    line_color: '#006b54',
-    line_thickness: '4',
-    is_directional: false,
-    status: 'unpublished' as Connection['status'],
-  });
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
 
   function isUuid(value: string) {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
@@ -57,24 +60,50 @@ export default function RouteEditorPage() {
   async function load() {
     if (!resolvedMapId) return;
     setLoading(true);
-    const [poiRes, connRes] = await Promise.all([
+
+    const [poiRes, routeRes] = await Promise.all([
       fetch(`/api/pois?mapId=${resolvedMapId}`, { cache: 'no-store' }),
-      fetch(`/api/route-connections?mapId=${resolvedMapId}`, { cache: 'no-store' }),
+      fetch(`/api/guided-routes?mapId=${resolvedMapId}`, { cache: 'no-store' }),
     ]);
 
     const poiJson = await poiRes.json();
-    const connJson = await connRes.json();
+    const routeJson = await routeRes.json();
 
-    setPois((poiJson.pois ?? []).map((p: any) => ({ id: p.id, title: p.title, stop_number: p.stop_number })));
-    setConnections(connJson.routeConnections ?? []);
-
-    if (!form.from_poi_id && poiJson.pois?.[0]?.id) {
-      setForm((prev) => ({
-        ...prev,
-        from_poi_id: poiJson.pois[0].id,
-        to_poi_id: poiJson.pois?.[1]?.id ?? poiJson.pois[0].id,
-      }));
+    if (!poiRes.ok) {
+      setMessage(poiJson.error ?? 'Failed to load POIs');
+      setLoading(false);
+      return;
     }
+
+    if (!routeRes.ok) {
+      setMessage(routeJson.error ?? 'Failed to load guided route');
+      setLoading(false);
+      return;
+    }
+
+    const loadedPois: Poi[] = (poiJson.pois ?? []).map((poi: any) => ({
+      id: poi.id,
+      title: poi.title,
+      stop_number: poi.stop_number,
+    }));
+    setPois(loadedPois);
+
+    const loadedGuidedRoute: GuidedRoute | null = routeJson.guidedRoute ?? null;
+    setGuidedRoute(loadedGuidedRoute);
+
+    const loadedStops: GuidedRouteStop[] = routeJson.stops ?? [];
+    const ordered = loadedStops
+      .slice()
+      .sort((a, b) => a.stop_number - b.stop_number)
+      .map((stop) => stop.poi_id);
+
+    setOrderedPoiIds(ordered);
+    setNewStopPoiId('');
+
+    if (loadedGuidedRoute?.title) {
+      setRouteTitle(loadedGuidedRoute.title);
+    }
+
     setLoading(false);
   }
 
@@ -93,133 +122,187 @@ export default function RouteEditorPage() {
     if (resolvedMapId) void load();
   }, [resolvedMapId]);
 
-  const poiNameById = useMemo(() => Object.fromEntries(pois.map((p) => [p.id, p.title])), [pois]);
+  const poiById = useMemo(() => {
+    return new Map(pois.map((poi) => [poi.id, poi]));
+  }, [pois]);
 
-  async function createConnection(e: React.FormEvent) {
+  const availablePois = useMemo(
+    () => pois.filter((poi) => !orderedPoiIds.includes(poi.id)),
+    [pois, orderedPoiIds]
+  );
+
+  async function createGuidedRoute(e: React.FormEvent) {
     e.preventDefault();
-    if (!resolvedMapId) return setMessage('Map id is not resolved yet.');
-    const res = await fetch('/api/route-connections', {
+    if (!resolvedMapId) return;
+
+    const res = await fetch('/api/guided-routes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         map_id: resolvedMapId,
-        from_poi_id: form.from_poi_id,
-        to_poi_id: form.to_poi_id,
-        order_index: Number(form.order_index),
-        line_style: form.line_style,
-        line_color: form.line_color,
-        line_thickness: Number(form.line_thickness),
-        is_directional: form.is_directional,
-        status: form.status,
+        title: routeTitle || 'Primary Guided Route',
       }),
     });
 
     const json = await res.json();
-    if (!res.ok) return setMessage(json.error ?? 'Failed to create connection');
+    if (!res.ok) return setMessage(json.error ?? 'Failed to create guided route');
 
-    setMessage('Route connection created.');
+    setGuidedRoute(json.guidedRoute ?? null);
+    setMessage('Primary guided route created. Add POIs and save the order to generate route segments.');
     await load();
   }
 
-  async function updateConnection(id: string, patch: Partial<Connection>) {
-    const res = await fetch(`/api/route-connections/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(patch),
+  function addStop() {
+    if (!newStopPoiId) return;
+    if (orderedPoiIds.includes(newStopPoiId)) return;
+
+    setOrderedPoiIds((prev) => [...prev, newStopPoiId]);
+    setNewStopPoiId('');
+  }
+
+  function removeStop(poiId: string) {
+    setOrderedPoiIds((prev) => prev.filter((id) => id !== poiId));
+  }
+
+  function moveStop(poiId: string, direction: 'up' | 'down') {
+    setOrderedPoiIds((prev) => {
+      const index = prev.indexOf(poiId);
+      if (index < 0) return prev;
+
+      if (direction === 'up' && index === 0) return prev;
+      if (direction === 'down' && index === prev.length - 1) return prev;
+
+      const next = [...prev];
+      const swapIndex = direction === 'up' ? index - 1 : index + 1;
+      [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
+      return next;
     });
-    const json = await res.json();
-    if (!res.ok) return setMessage(json.error ?? 'Failed to update connection');
-    setMessage('Connection updated.');
-    await load();
   }
 
-  async function deleteConnection(id: string) {
-    const res = await fetch(`/api/route-connections/${id}`, { method: 'DELETE' });
+  function onDropOn(poiId: string) {
+    if (!draggingPoiId || draggingPoiId === poiId) return;
+    setOrderedPoiIds((prev) => reorderItems(prev, draggingPoiId, poiId));
+    setDraggingPoiId(null);
+  }
+
+  async function saveStops() {
+    if (!guidedRoute) return;
+    setSaving(true);
+
+    const res = await fetch(`/api/guided-routes/${guidedRoute.id}/stops`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ poi_ids: orderedPoiIds }),
+    });
+
     const json = await res.json();
-    if (!res.ok) return setMessage(json.error ?? 'Failed to delete connection');
-    setMessage('Connection deleted.');
+    setSaving(false);
+
+    if (!res.ok) return setMessage(json.error ?? 'Failed to save route stops');
+
+    setMessage(`Saved ${json.stopCount} stop(s) and generated ${json.connectionCount} route segment(s).`);
     await load();
   }
 
   return (
     <AppShell>
-      <PageHeader eyebrow="Map Builder" title="Route Connection Editor" subtitle="Define explicit route segments and per-connection display styling." />
+      <PageHeader
+        eyebrow="Map Builder"
+        title="Guided Route Builder"
+        subtitle="Create one guided route, add POIs as stops, then drag to reorder. Saving generates route lines automatically."
+      />
 
       {!resolvedMapId ? (
         <SectionCard title="Resolving map" subtitle="Waiting for map id resolution from route parameter.">
           <LoadingRows rows={2} />
         </SectionCard>
+      ) : loading ? (
+        <SectionCard title="Loading guided route" subtitle="Reading map POIs and route state.">
+          <LoadingRows rows={4} />
+        </SectionCard>
+      ) : !guidedRoute ? (
+        <SectionCard title="Create primary guided route" subtitle="Each map has one primary route in MVP.">
+          <form onSubmit={createGuidedRoute} className="form-grid">
+            <FormField label="Route title">
+              <TextInput value={routeTitle} onChange={(e) => setRouteTitle(e.target.value)} required />
+            </FormField>
+            <Button type="submit">Create Guided Route</Button>
+          </form>
+        </SectionCard>
       ) : (
         <>
-      <SectionCard title="Create Connection">
-        <form onSubmit={createConnection} className="form-grid">
-          <div className="form-row md:grid-cols-4">
-            <FormField label="From POI">
-              <SelectInput value={form.from_poi_id} onChange={(e) => setForm((p) => ({ ...p, from_poi_id: e.target.value }))} required>
-                <option value="">Select stop</option>
-                {pois.map((poi) => <option key={poi.id} value={poi.id}>{poi.stop_number ? `${poi.stop_number}. ` : ''}{poi.title}</option>)}
-              </SelectInput>
-            </FormField>
-            <FormField label="To POI">
-              <SelectInput value={form.to_poi_id} onChange={(e) => setForm((p) => ({ ...p, to_poi_id: e.target.value }))} required>
-                <option value="">Select stop</option>
-                {pois.map((poi) => <option key={poi.id} value={poi.id}>{poi.stop_number ? `${poi.stop_number}. ` : ''}{poi.title}</option>)}
-              </SelectInput>
-            </FormField>
-            <FormField label="Order index">
-              <TextInput value={form.order_index} onChange={(e) => setForm((p) => ({ ...p, order_index: e.target.value }))} />
-            </FormField>
-            <FormField label="Status">
-              <SelectInput value={form.status} onChange={(e) => setForm((p) => ({ ...p, status: e.target.value as Connection['status'] }))}>
-                <option value="unpublished">unpublished</option>
-                <option value="published">published</option>
-                <option value="archived">archived</option>
-              </SelectInput>
-            </FormField>
-          </div>
+          <SectionCard
+            title={guidedRoute.title}
+            subtitle="Add stops and order them. Save when ready to rebuild route segments from this sequence."
+            actions={
+              <Button onClick={saveStops} disabled={saving}>
+                {saving ? 'Saving...' : 'Save Route Order'}
+              </Button>
+            }
+          >
+            <div className="form-row md:grid-cols-[1fr_auto] md:items-end">
+              <FormField label="Add POI stop">
+                <SelectInput value={newStopPoiId} onChange={(e) => setNewStopPoiId(e.target.value)}>
+                  <option value="">Select POI</option>
+                  {availablePois.map((poi) => (
+                    <option key={poi.id} value={poi.id}>
+                      {poi.stop_number ? `${poi.stop_number}. ` : ''}
+                      {poi.title}
+                    </option>
+                  ))}
+                </SelectInput>
+              </FormField>
+              <Button onClick={addStop} disabled={!newStopPoiId}>
+                Add Stop
+              </Button>
+            </div>
 
-          <div className="form-row md:grid-cols-4 md:items-end">
-            <FormField label="Line style">
-              <TextInput value={form.line_style} onChange={(e) => setForm((p) => ({ ...p, line_style: e.target.value }))} />
-            </FormField>
-            <FormField label="Line color">
-              <input type="color" className="ui-input h-[40px] p-1" value={form.line_color} onChange={(e) => setForm((p) => ({ ...p, line_color: e.target.value }))} />
-            </FormField>
-            <FormField label="Line thickness">
-              <TextInput value={form.line_thickness} onChange={(e) => setForm((p) => ({ ...p, line_thickness: e.target.value }))} />
-            </FormField>
-            <label className="inline-flex h-[40px] items-center gap-2 rounded-md border border-[var(--border-strong)] bg-[var(--surface)] px-3 text-sm">
-              <input type="checkbox" checked={form.is_directional} onChange={(e) => setForm((p) => ({ ...p, is_directional: e.target.checked }))} />
-              Directional
-            </label>
-          </div>
-
-          <Button type="submit">Add Connection</Button>
-        </form>
-      </SectionCard>
-
-      <SectionCard title="Current Connections" subtitle="Publish, unpublish, or remove individual route segments.">
-        {loading ? (
-          <LoadingRows rows={4} />
-        ) : connections.length === 0 ? (
-          <EmptyState title="No route connections" description="Add a connection to start building guided path lines." />
-        ) : (
-          <div className="space-y-2">
-            {connections.map((conn) => (
-              <div key={conn.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] p-3 text-sm">
-                <p className="row-title">{conn.order_index}. {poiNameById[conn.from_poi_id] ?? 'Unknown stop'} → {poiNameById[conn.to_poi_id] ?? 'Unknown stop'}</p>
-                <p className="row-meta">{conn.line_style ?? 'solid'} | {conn.line_color ?? 'default'} | {conn.line_thickness}px | {conn.status}</p>
-                <div className="mt-2 action-bar">
-                  <Button variant="secondary" onClick={() => updateConnection(conn.id, { status: conn.status === 'published' ? 'unpublished' : 'published' })}>
-                    {conn.status === 'published' ? 'Unpublish' : 'Publish'}
-                  </Button>
-                  <Button variant="danger" onClick={() => deleteConnection(conn.id)}>Delete</Button>
-                </div>
+            {orderedPoiIds.length === 0 ? (
+              <EmptyState
+                title="No stops in this route"
+                description="Add POIs, then save route order to generate explicit connection segments."
+              />
+            ) : (
+              <div className="mt-4 space-y-2">
+                {orderedPoiIds.map((poiId, index) => {
+                  const poi = poiById.get(poiId);
+                  return (
+                    <div
+                      key={poiId}
+                      draggable
+                      onDragStart={() => setDraggingPoiId(poiId)}
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={() => onDropOn(poiId)}
+                      className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2"
+                    >
+                      <span className="rounded-md bg-[var(--surface-muted)] px-2 py-1 text-xs font-semibold text-[var(--heading)]">
+                        {index + 1}
+                      </span>
+                      <div>
+                        <p className="row-title">{poi?.title ?? 'Unknown POI'}</p>
+                        <p className="row-meta">Drag to reorder or use arrow controls.</p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" onClick={() => moveStop(poiId, 'up')} disabled={index === 0}>
+                          ↑
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          onClick={() => moveStop(poiId, 'down')}
+                          disabled={index === orderedPoiIds.length - 1}
+                        >
+                          ↓
+                        </Button>
+                        <Button variant="danger" onClick={() => removeStop(poiId)}>
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
-          </div>
-        )}
-      </SectionCard>
+            )}
+          </SectionCard>
         </>
       )}
 

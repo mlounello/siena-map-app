@@ -46,11 +46,29 @@ export async function POST(request: Request) {
   if (!parsed.success) return badRequest(parsed.error.issues.map((i) => i.message).join(', '));
 
   const { db } = await createDbClient();
-  const { data, error } = await db
-    .from('route_connections')
-    .insert({ ...parsed.data, created_by: profile.id })
-    .select('*')
-    .single();
+  const payload = { ...parsed.data, created_by: profile.id };
+
+  let { data, error } = await db.from('route_connections').insert(payload).select('*').single();
+
+  if (error?.code === '23505' && error.message.includes('route_connections_map_id_order_index_key')) {
+    // Keep unique ordering while avoiding hard-fail UX: reassign to the next available order index.
+    const { data: maxOrderRow, error: maxOrderError } = await db
+      .from('route_connections')
+      .select('order_index')
+      .eq('map_id', parsed.data.map_id)
+      .order('order_index', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (maxOrderError) return serverError(maxOrderError.message);
+
+    const nextOrder = (maxOrderRow?.order_index ?? 0) + 1;
+    ({ data, error } = await db
+      .from('route_connections')
+      .insert({ ...payload, order_index: nextOrder })
+      .select('*')
+      .single());
+  }
 
   if (error) return serverError(error.message);
   return created({ routeConnection: data });

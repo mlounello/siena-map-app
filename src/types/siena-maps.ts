@@ -142,3 +142,23 @@ export interface RouteConnection {
   created_at: string;
   updated_at: string;
 }
+
+export interface GuidedRoute {
+  id: string;
+  map_id: string;
+  title: string;
+  is_primary: boolean;
+  created_by: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GuidedRouteStop {
+  id: string;
+  guided_route_id: string;
+  poi_id: string;
+  stop_number: number;
+  created_by: string | null;
+  created_at: string;
+}
