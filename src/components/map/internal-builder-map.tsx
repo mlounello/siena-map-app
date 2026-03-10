@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MapContainer, Marker, Polyline, TileLayer, useMapEvents } from 'react-leaflet';
+import { CircleMarker, MapContainer, Marker, Polyline, TileLayer, useMapEvents } from 'react-leaflet';
 import { getPinColor, getPinSymbol } from '@/lib/map/pins';
 import { resolveTilePreset } from '@/lib/map/base-layers';
 import { fetchRoutedSegments, lineStringToLatLngPairs } from '@/lib/map/routing-client';
@@ -284,6 +284,25 @@ export function InternalBuilderMap({
                 />
               ))
             : null}
+
+          {pois
+            .filter(
+              (poi) =>
+                Number.isFinite(Number(poi.route_anchor_lat)) && Number.isFinite(Number(poi.route_anchor_lng))
+            )
+            .map((poi) => (
+              <CircleMarker
+                key={`anchor-${poi.id}`}
+                center={[Number(poi.route_anchor_lat), Number(poi.route_anchor_lng)]}
+                radius={4}
+                pathOptions={{
+                  color: '#1b4932',
+                  weight: 2,
+                  fillColor: '#fcc917',
+                  fillOpacity: 1,
+                }}
+              />
+            ))}
 
           {leafletModule && Number.isFinite(draftLat) && Number.isFinite(draftLng) ? (
             <Marker position={[draftLat, draftLng]} icon={getDraftIcon()} />

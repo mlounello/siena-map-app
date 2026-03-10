@@ -59,7 +59,6 @@ type PoiFormState = {
   route_anchor_lat: string;
   route_anchor_lng: string;
   category_id: string;
-  stop_number: string;
   pin_color: string;
 };
 
@@ -90,7 +89,6 @@ export default function PoisPage() {
     route_anchor_lat: '',
     route_anchor_lng: '',
     category_id: '',
-    stop_number: '',
     pin_color: '',
   });
 
@@ -113,7 +111,6 @@ export default function PoisPage() {
           title: '',
           description: '',
           category_id: '',
-          stop_number: '',
           pin_color: '',
         },
         map
@@ -131,7 +128,6 @@ export default function PoisPage() {
       route_anchor_lat: poi.route_anchor_lat == null ? '' : Number(poi.route_anchor_lat).toFixed(6),
       route_anchor_lng: poi.route_anchor_lng == null ? '' : Number(poi.route_anchor_lng).toFixed(6),
       category_id: poi.category_id ?? '',
-      stop_number: poi.stop_number == null ? '' : String(poi.stop_number),
       pin_color: poi.pin_color ?? '',
     });
   }
@@ -215,7 +211,6 @@ export default function PoisPage() {
       route_anchor_lng: form.route_anchor_lng ? Number(form.route_anchor_lng) : null,
       category_id: form.category_id || null,
       owning_department_id: mapRecord.primary_department_id,
-      stop_number: form.stop_number ? Number(form.stop_number) : null,
       pin_color: form.pin_color || null,
     };
 
@@ -377,9 +372,6 @@ export default function PoisPage() {
                     </option>
                   ))}
                 </SelectInput>
-              </FormField>
-              <FormField label="Stop number">
-                <TextInput value={form.stop_number} onChange={(e) => setForm((prev) => ({ ...prev, stop_number: e.target.value }))} />
               </FormField>
             </div>
 
