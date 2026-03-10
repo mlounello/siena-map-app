@@ -166,3 +166,44 @@ export interface GuidedRouteStop {
   created_by: string | null;
   created_at: string;
 }
+
+export interface RoutingDiagnostics {
+  segment_id: string;
+  requested_from: { lat: number; lng: number };
+  requested_to: { lat: number; lng: number };
+  snapped_from: { lat: number; lng: number } | null;
+  snapped_to: { lat: number; lng: number } | null;
+  snap_distance_meters_start: number | null;
+  snap_distance_meters_end: number | null;
+  provider: 'mapbox' | 'fallback_straight';
+  profile: RouteMode;
+  geometry_source: 'provider' | 'straight_line_fallback';
+  fallback_reason: string | null;
+  route_distance_meters: number | null;
+  direct_distance_meters: number | null;
+  detour_ratio: number | null;
+  duration_seconds: number | null;
+  warnings: string[];
+}
+
+export interface RoutingSegmentResponse {
+  id: string;
+  routed: boolean;
+  fallback: 'none' | 'straight';
+  source: 'mapbox' | 'fallback_straight';
+  geometry: {
+    type: 'LineString';
+    coordinates: Array<[number, number]>;
+  };
+  distanceMeters: number | null;
+  durationSeconds: number | null;
+  errorCode: string | null;
+  cacheKey: string;
+  diagnostics: RoutingDiagnostics;
+}
+
+export interface RoutingBatchResponse {
+  provider: 'mapbox';
+  mode: RouteMode;
+  results: RoutingSegmentResponse[];
+}

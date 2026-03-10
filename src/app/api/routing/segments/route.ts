@@ -20,6 +20,7 @@ const requestSchema = z.object({
   mapId: z.string().uuid().optional(),
   mode: z.enum(['walking', 'driving']).default('walking'),
   segments: z.array(segmentSchema).min(1).max(MAX_SEGMENTS_PER_REQUEST),
+  debug: z.boolean().optional(),
 });
 
 function normalizeSegments(input: z.infer<typeof requestSchema>['segments']): RoutingSegmentInput[] {
@@ -37,6 +38,7 @@ function normalizeSegments(input: z.infer<typeof requestSchema>['segments']): Ro
 }
 
 export async function POST(request: Request) {
+  const requestUrl = new URL(request.url);
   const body = await request.json().catch(() => null);
   const parsed = requestSchema.safeParse(body);
   if (!parsed.success) {
@@ -48,13 +50,20 @@ export async function POST(request: Request) {
   }
 
   try {
+    const debugFromQuery = ['1', 'true', 'yes'].includes(
+      (requestUrl.searchParams.get('debug') || '').toLowerCase()
+    );
+    const debugFromHeader = ['1', 'true', 'yes'].includes(
+      (request.headers.get('x-routing-debug') || '').toLowerCase()
+    );
+
     const response = await routeSegmentsBatch({
       mode: parsed.data.mode,
       segments: normalizeSegments(parsed.data.segments),
+      debug: Boolean(parsed.data.debug) || debugFromQuery || debugFromHeader,
     });
     return ok(response);
   } catch (error) {
     return serverError(error instanceof Error ? error.message : 'Routing request failed');
   }
 }
-

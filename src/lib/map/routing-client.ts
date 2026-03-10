@@ -20,6 +20,24 @@ export type SegmentRoutingResult = {
   durationSeconds: number | null;
   errorCode: string | null;
   cacheKey: string;
+  diagnostics?: {
+    segment_id: string;
+    requested_from: { lat: number; lng: number };
+    requested_to: { lat: number; lng: number };
+    snapped_from: { lat: number; lng: number } | null;
+    snapped_to: { lat: number; lng: number } | null;
+    snap_distance_meters_start: number | null;
+    snap_distance_meters_end: number | null;
+    provider: string;
+    profile: RouteMode;
+    geometry_source: 'provider' | 'straight_line_fallback';
+    fallback_reason: string | null;
+    route_distance_meters: number | null;
+    direct_distance_meters: number | null;
+    detour_ratio: number | null;
+    duration_seconds: number | null;
+    warnings: string[];
+  };
 };
 
 type BatchResponse = {
@@ -72,4 +90,3 @@ export function lineStringToLatLngPairs(
 ): Array<[number, number]> {
   return coordinates.map((coordinate) => [coordinate[1], coordinate[0]]);
 }
-
