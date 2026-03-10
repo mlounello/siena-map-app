@@ -10,21 +10,36 @@ import type {
   RoutingSegmentResult,
 } from '@/lib/routing/types';
 
-const SEGMENT_TIMEOUT_MS = Number(process.env.ROUTING_TIMEOUT_MS || 4000);
-const PROVIDER_CONCURRENCY = Number(process.env.ROUTING_PROVIDER_CONCURRENCY || 4);
+function readNumericEnv(name: string, fallback: number, min?: number): number {
+  const raw = process.env[name];
+  if (raw == null || raw.trim() === '') return fallback;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) return fallback;
+  if (min != null && parsed < min) return fallback;
+  return parsed;
+}
+
+const SEGMENT_TIMEOUT_MS = readNumericEnv('ROUTING_TIMEOUT_MS', 4000, 1);
+const PROVIDER_CONCURRENCY = Math.floor(readNumericEnv('ROUTING_PROVIDER_CONCURRENCY', 4, 1));
 const ROUTING_DEBUG = process.env.ROUTING_DEBUG === 'true';
 
 // Guardrail thresholds (centralized, tunable)
-const SHORT_HOP_EPSILON_METERS = Number(process.env.SHORT_HOP_EPSILON_METERS || 5);
-const SHORT_HOP_MAX_DIRECT_DISTANCE_METERS = Number(
-  process.env.SHORT_HOP_MAX_DIRECT_DISTANCE_METERS || 250
+const SHORT_HOP_EPSILON_METERS = readNumericEnv('SHORT_HOP_EPSILON_METERS', 5, 0);
+const SHORT_HOP_MAX_DIRECT_DISTANCE_METERS = readNumericEnv(
+  'SHORT_HOP_MAX_DIRECT_DISTANCE_METERS',
+  250,
+  1
 );
-const MAX_ALLOWED_SHORT_HOP_DETOUR_RATIO = Number(
-  process.env.MAX_ALLOWED_SHORT_HOP_DETOUR_RATIO || 2.5
+const MAX_ALLOWED_SHORT_HOP_DETOUR_RATIO = readNumericEnv(
+  'MAX_ALLOWED_SHORT_HOP_DETOUR_RATIO',
+  2.5,
+  1
 );
-const MAX_SNAP_DISTANCE_METERS = Number(process.env.MAX_SNAP_DISTANCE_METERS || 50);
-const MAX_SHORT_HOP_ROUTE_DISTANCE_METERS = Number(
-  process.env.MAX_SHORT_HOP_ROUTE_DISTANCE_METERS || 600
+const MAX_SNAP_DISTANCE_METERS = readNumericEnv('MAX_SNAP_DISTANCE_METERS', 50, 0);
+const MAX_SHORT_HOP_ROUTE_DISTANCE_METERS = readNumericEnv(
+  'MAX_SHORT_HOP_ROUTE_DISTANCE_METERS',
+  600,
+  1
 );
 
 function toRadians(value: number): number {

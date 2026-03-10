@@ -87,6 +87,7 @@ These decisions are active and should be treated as settled unless explicitly re
 - GeoJSON normalization and fallback handling in the routing flow.
 - Diagnostics contract is stable across routed and fallback segments.
 - `detour_ratio` is intentionally suppressed for tiny direct distances (`< 5m`) to avoid noisy values.
+- Deterministic guardrail fields are included in diagnostics: `short_hop`, `flagged`, `flag_reasons`.
 
 ### Data Model Highlights
 
