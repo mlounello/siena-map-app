@@ -135,40 +135,44 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
   const generatedConnections = [];
   let internalTransferCount = 0;
-  for (let index = 0; index < orderedPoiIds.length - 1; index += 1) {
-    const fromPoiId = orderedPoiIds[index];
-    const toPoiId = orderedPoiIds[index + 1];
-    const style = poiStyleById.get(fromPoiId) ?? {
-      line_color: DEFAULT_CONNECTION_STYLE.line_color,
-      line_thickness: DEFAULT_CONNECTION_STYLE.line_thickness,
-    };
+  let orderIndex = 1;
+  let previousAnchoredPoiId: string | null = null;
 
-    const fromAnchor = poiAnchorById.get(fromPoiId);
-    const toAnchor = poiAnchorById.get(toPoiId);
-    const hasBothAnchors =
-      Number.isFinite(fromAnchor?.lat) &&
-      Number.isFinite(fromAnchor?.lng) &&
-      Number.isFinite(toAnchor?.lat) &&
-      Number.isFinite(toAnchor?.lng);
-    if (!hasBothAnchors) internalTransferCount += 1;
+  for (const poiId of orderedPoiIds) {
+    const anchor = poiAnchorById.get(poiId);
+    const hasAnchor = Number.isFinite(anchor?.lat) && Number.isFinite(anchor?.lng);
 
-    generatedConnections.push({
-      map_id: guidedRoute.map_id,
-      from_poi_id: fromPoiId,
-      to_poi_id: toPoiId,
-      order_index: index + 1,
-      line_style: DEFAULT_CONNECTION_STYLE.line_style,
-      line_color: hasBothAnchors ? style.line_color : null,
-      line_thickness: hasBothAnchors ? style.line_thickness : 0,
-      is_directional: DEFAULT_CONNECTION_STYLE.is_directional,
-      connection_type: hasBothAnchors ? 'outdoor_routed' : 'internal_transfer',
-      transfer_note: hasBothAnchors
-        ? null
-        : 'Transfer indoors to the next stop (door anchor missing).',
-      label: hasBothAnchors ? null : 'Internal transfer',
-      status: 'published',
-      created_by: profile.id,
-    });
+    if (!hasAnchor) {
+      internalTransferCount += 1;
+      continue;
+    }
+
+    if (previousAnchoredPoiId && previousAnchoredPoiId !== poiId) {
+      const style = poiStyleById.get(previousAnchoredPoiId) ?? {
+        line_color: DEFAULT_CONNECTION_STYLE.line_color,
+        line_thickness: DEFAULT_CONNECTION_STYLE.line_thickness,
+      };
+
+      generatedConnections.push({
+        map_id: guidedRoute.map_id,
+        from_poi_id: previousAnchoredPoiId,
+        to_poi_id: poiId,
+        order_index: orderIndex,
+        line_style: DEFAULT_CONNECTION_STYLE.line_style,
+        line_color: style.line_color,
+        line_thickness: style.line_thickness,
+        is_directional: DEFAULT_CONNECTION_STYLE.is_directional,
+        connection_type: 'outdoor_routed',
+        transfer_note: null,
+        label: null,
+        status: 'published',
+        created_by: profile.id,
+      });
+
+      orderIndex += 1;
+    }
+
+    previousAnchoredPoiId = poiId;
   }
 
   if (generatedConnections.length > 0) {
