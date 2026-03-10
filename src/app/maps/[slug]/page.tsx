@@ -19,7 +19,7 @@ export default async function PublicMapPage({ params }: { params: Promise<{ slug
 
   const { data: pois } = await db
     .from('pois')
-    .select('id, title, description, latitude, longitude, stop_number, category_id, pin_color, categories:category_id(id, name, icon, color)')
+    .select('id, title, description, latitude, longitude, route_anchor_lat, route_anchor_lng, stop_number, category_id, pin_color, categories:category_id(id, name, icon, color)')
     .eq('map_id', map.id)
     .eq('status', 'published')
     .order('stop_number', { ascending: true, nullsFirst: false })
@@ -27,7 +27,7 @@ export default async function PublicMapPage({ params }: { params: Promise<{ slug
 
   const { data: routeConnections } = await db
     .from('route_connections')
-    .select('id, from_poi_id, to_poi_id, order_index, line_color, line_thickness')
+    .select('id, from_poi_id, to_poi_id, order_index, line_color, line_thickness, connection_type, transfer_note')
     .eq('map_id', map.id)
     .eq('status', 'published')
     .order('order_index', { ascending: true });

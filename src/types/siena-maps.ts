@@ -109,6 +109,8 @@ export interface Poi {
   pin_icon_asset_id: string | null;
   latitude: number;
   longitude: number;
+  route_anchor_lat: number | null;
+  route_anchor_lng: number | null;
   category_id: string | null;
   owning_department_id: string;
   created_by: string | null;
@@ -137,6 +139,8 @@ export interface RouteConnection {
   line_thickness: number;
   is_directional: boolean;
   label: string | null;
+  connection_type: 'outdoor_routed' | 'internal_transfer';
+  transfer_note: string | null;
   status: PublicationStatus;
   created_by: string | null;
   created_at: string;

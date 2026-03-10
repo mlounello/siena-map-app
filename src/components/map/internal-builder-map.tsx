@@ -11,6 +11,8 @@ type Poi = {
   title: string;
   latitude: number;
   longitude: number;
+  route_anchor_lat?: number | null;
+  route_anchor_lng?: number | null;
   stop_number: number | null;
   category_id?: string | null;
   pin_color?: string | null;
@@ -28,7 +30,16 @@ type RouteConnectionRef = {
   to_poi_id: string;
   line_color: string | null;
   line_thickness: number | null;
+  connection_type?: 'outdoor_routed' | 'internal_transfer' | null;
+  transfer_note?: string | null;
   status?: string | null;
+};
+
+type RouteSegment = {
+  id: string;
+  positions: [number, number][];
+  color: string;
+  weight: number;
 };
 
 function MapClickCapture({ onPick }: { onPick: (lat: number, lng: number) => void }) {
@@ -70,7 +81,7 @@ export function InternalBuilderMap({
   const LINE_VISIBILITY_STORAGE_KEY = 'siena_maps_builder_show_lines';
   const [leafletModule, setLeafletModule] = useState<typeof import('leaflet') | null>(null);
   const [showGuideLine, setShowGuideLine] = useState(true);
-  const [snappedSegments, setSnappedSegments] = useState<Array<[number, number][]>>([]);
+  const [snappedSegments, setSnappedSegments] = useState<Record<string, [number, number][]>>({});
   const markerIconCache = useRef<Map<string, any>>(new Map());
 
   useEffect(() => {
@@ -87,21 +98,33 @@ export function InternalBuilderMap({
     }
   }, []);
 
-  const pointsById = useMemo(
-    () => new Map(pois.map((poi) => [poi.id, [poi.latitude, poi.longitude] as [number, number]])),
-    [pois]
-  );
+  const pointsById = useMemo(() => {
+    return new Map(
+      pois.map((poi) => [
+        poi.id,
+        [
+          Number.isFinite(Number(poi.route_anchor_lat)) ? Number(poi.route_anchor_lat) : poi.latitude,
+          Number.isFinite(Number(poi.route_anchor_lng)) ? Number(poi.route_anchor_lng) : poi.longitude,
+        ] as [number, number],
+      ])
+    );
+  }, [pois]);
 
-  const straightSegments = useMemo(() => {
+  const routeSegments = useMemo(() => {
     return routeConnections
-      .filter((route) => route.status !== 'archived')
+      .filter((route) => route.status !== 'archived' && route.connection_type !== 'internal_transfer')
       .map((route) => {
         const from = pointsById.get(route.from_poi_id);
         const to = pointsById.get(route.to_poi_id);
         if (!from || !to) return null;
-        return [from, to] as [number, number][];
+        return {
+          id: route.id,
+          positions: [from, to] as [number, number][],
+          color: route.line_color || '#006b54',
+          weight: route.line_thickness || 4,
+        } as RouteSegment;
       })
-      .filter((segment): segment is [number, number][] => !!segment);
+      .filter((segment): segment is RouteSegment => !!segment);
   }, [routeConnections, pointsById]);
   const categoryById = useMemo(() => new Map(categories.map((category) => [category.id, category])), [categories]);
   const tilePreset = resolveTilePreset(themePreset);
@@ -144,18 +167,18 @@ export function InternalBuilderMap({
   }
 
   useEffect(() => {
-    if (!showGuideLine || straightSegments.length === 0) {
-      setSnappedSegments([]);
+    if (!showGuideLine || routeSegments.length === 0) {
+      setSnappedSegments({});
       return;
     }
 
     const controller = new AbortController();
 
     async function fetchSnappedSegments() {
-      const segments = straightSegments.map((segment, index) => ({
-        id: `builder-segment-${index}`,
-        from: { lat: segment[0][0], lng: segment[0][1] },
-        to: { lat: segment[1][0], lng: segment[1][1] },
+      const segments = routeSegments.map((segment) => ({
+        id: segment.id,
+        from: { lat: segment.positions[0][0], lng: segment.positions[0][1] },
+        to: { lat: segment.positions[1][0], lng: segment.positions[1][1] },
       }));
 
       try {
@@ -166,20 +189,20 @@ export function InternalBuilderMap({
           signal: controller.signal,
         });
 
-        const next = payload.results
-          .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }))
-          .map((result) => lineStringToLatLngPairs(result.geometry.coordinates));
-
-                        if (!controller.signal.aborted) setSnappedSegments(next);
+        const next: Record<string, [number, number][]> = {};
+        for (const result of payload.results) {
+          next[result.id] = lineStringToLatLngPairs(result.geometry.coordinates);
+        }
+        if (!controller.signal.aborted) setSnappedSegments(next);
       } catch {
-        if (!controller.signal.aborted) setSnappedSegments(straightSegments);
+        if (!controller.signal.aborted) setSnappedSegments({});
       }
     }
 
     void fetchSnappedSegments();
 
     return () => controller.abort();
-  }, [showGuideLine, straightSegments, routeMode, mapId]);
+  }, [showGuideLine, routeSegments, routeMode, mapId]);
 
   return (
     <div className="overflow-hidden rounded-xl border border-black/10 bg-white">
@@ -224,11 +247,11 @@ export function InternalBuilderMap({
           <MapClickCapture onPick={onPick} />
 
           {showGuideLine
-            ? (snappedSegments.length > 0 ? snappedSegments : straightSegments).map((segment, index) => (
+            ? routeSegments.map((segment) => (
                 <Polyline
-                  key={`guide-segment-${index}`}
-                  positions={segment}
-                  pathOptions={{ color: '#8b1f41', weight: 3, opacity: 0.75 }}
+                  key={`guide-segment-${segment.id}`}
+                  positions={snappedSegments[segment.id] ?? segment.positions}
+                  pathOptions={{ color: segment.color, weight: segment.weight, opacity: 0.78 }}
                 />
               ))
             : null}

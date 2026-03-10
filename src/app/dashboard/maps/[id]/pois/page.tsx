@@ -18,6 +18,8 @@ type Poi = {
   description: string | null;
   latitude: number;
   longitude: number;
+  route_anchor_lat: number | null;
+  route_anchor_lng: number | null;
   status: string;
   owning_department_id: string;
   created_by: string | null;
@@ -32,6 +34,8 @@ type RouteConnection = {
   to_poi_id: string;
   line_color: string | null;
   line_thickness: number | null;
+  connection_type: 'outdoor_routed' | 'internal_transfer';
+  transfer_note: string | null;
   status: 'unpublished' | 'published' | 'archived';
 };
 
@@ -68,6 +72,8 @@ export default function PoisPage() {
     description: '',
     latitude: '42.7167',
     longitude: '-73.7519',
+    route_anchor_lat: '',
+    route_anchor_lng: '',
     category_id: '',
     stop_number: '',
     pin_color: '',
@@ -106,6 +112,8 @@ export default function PoisPage() {
       ...p,
       latitude: String(mapJson.map?.default_center_lat ?? p.latitude),
       longitude: String(mapJson.map?.default_center_lng ?? p.longitude),
+      route_anchor_lat: String(mapJson.map?.default_center_lat ?? p.route_anchor_lat),
+      route_anchor_lng: String(mapJson.map?.default_center_lng ?? p.route_anchor_lng),
     }));
     setLoading(false);
   }
@@ -138,6 +146,8 @@ export default function PoisPage() {
       description: form.description || null,
       latitude: Number(form.latitude),
       longitude: Number(form.longitude),
+      route_anchor_lat: form.route_anchor_lat ? Number(form.route_anchor_lat) : null,
+      route_anchor_lng: form.route_anchor_lng ? Number(form.route_anchor_lng) : null,
       category_id: form.category_id || null,
       owning_department_id: mapRecord.primary_department_id,
       stop_number: form.stop_number ? Number(form.stop_number) : null,
@@ -230,6 +240,21 @@ export default function PoisPage() {
                 <TextInput value={form.longitude} onChange={(e) => setForm((p) => ({ ...p, longitude: e.target.value }))} required />
               </FormField>
             </div>
+            <div className="form-row md:grid-cols-2">
+              <FormField label="Door anchor latitude (optional)">
+                <TextInput value={form.route_anchor_lat} onChange={(e) => setForm((p) => ({ ...p, route_anchor_lat: e.target.value }))} />
+              </FormField>
+              <FormField label="Door anchor longitude (optional)">
+                <TextInput value={form.route_anchor_lng} onChange={(e) => setForm((p) => ({ ...p, route_anchor_lng: e.target.value }))} />
+              </FormField>
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setForm((p) => ({ ...p, route_anchor_lat: p.latitude, route_anchor_lng: p.longitude }))}
+            >
+              Use current pin as door anchor
+            </Button>
             <FormField label="Description">
               <TextArea rows={3} value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
             </FormField>
@@ -273,6 +298,10 @@ export default function PoisPage() {
                     <div className="mt-1 flex flex-wrap gap-2">
                       <Badge label={poi.status.replaceAll('_', ' ')} tone={statusTone(poi.status)} />
                       <Badge label={departmentById[poi.owning_department_id] ?? 'Department'} tone="info" />
+                      <Badge
+                        label={poi.route_anchor_lat != null && poi.route_anchor_lng != null ? 'Door anchor set' : 'No door anchor'}
+                        tone={poi.route_anchor_lat != null && poi.route_anchor_lng != null ? 'success' : 'warning'}
+                      />
                     </div>
                     <p className="row-meta">{poi.latitude.toFixed(6)}, {poi.longitude.toFixed(6)}</p>
                   </div>

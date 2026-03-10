@@ -19,14 +19,14 @@ export async function GET(_: Request, { params }: { params: Promise<{ slug: stri
   const [poisResult, routesResult] = await Promise.all([
     db
       .from('pois')
-      .select('id, title, description, latitude, longitude, stop_number, category_id, pin_color, categories:category_id(id, name, icon, color)')
+      .select('id, title, description, latitude, longitude, route_anchor_lat, route_anchor_lng, stop_number, category_id, pin_color, categories:category_id(id, name, icon, color)')
       .eq('map_id', map.id)
       .eq('status', 'published')
       .order('stop_number', { ascending: true, nullsFirst: false })
       .order('title', { ascending: true }),
     db
       .from('route_connections')
-      .select('id, from_poi_id, to_poi_id, order_index, line_style, line_color, line_thickness, is_directional')
+      .select('id, from_poi_id, to_poi_id, order_index, line_style, line_color, line_thickness, is_directional, connection_type, transfer_note')
       .eq('map_id', map.id)
       .eq('status', 'published')
       .order('order_index', { ascending: true }),

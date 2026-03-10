@@ -14,6 +14,8 @@ type Poi = {
   stop_number: number | null;
   latitude: number | string;
   longitude: number | string;
+  route_anchor_lat?: number | string | null;
+  route_anchor_lng?: number | string | null;
   category_id?: string | null;
   pin_color?: string | null;
   categories?:
@@ -39,6 +41,8 @@ type RouteConnection = {
   order_index: number;
   line_color: string | null;
   line_thickness: number | null;
+  connection_type?: 'outdoor_routed' | 'internal_transfer' | null;
+  transfer_note?: string | null;
 };
 
 export function PublicMapShell({

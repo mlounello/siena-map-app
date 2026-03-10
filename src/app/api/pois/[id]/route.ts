@@ -11,6 +11,8 @@ const updatePoiSchema = z.object({
   description: z.string().max(4000).nullable().optional(),
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
+  route_anchor_lat: z.number().min(-90).max(90).nullable().optional(),
+  route_anchor_lng: z.number().min(-180).max(180).nullable().optional(),
   category_id: z.string().uuid().nullable().optional(),
   owning_department_id: z.string().uuid().optional(),
   pin_color: z.string().max(40).nullable().optional(),

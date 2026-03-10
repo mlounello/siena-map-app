@@ -14,6 +14,8 @@ type Poi = {
   stop_number: number | null;
   latitude: number | string;
   longitude: number | string;
+  route_anchor_lat?: number | string | null;
+  route_anchor_lng?: number | string | null;
   category_id?: string | null;
   pin_color?: string | null;
   categories?:
@@ -39,6 +41,8 @@ type RouteConnection = {
   order_index: number;
   line_color: string | null;
   line_thickness: number | null;
+  connection_type?: 'outdoor_routed' | 'internal_transfer' | null;
+  transfer_note?: string | null;
   status?: string | null;
 };
 
@@ -74,9 +78,7 @@ export function PublicLeafletMap({
   pois: Poi[];
   routeConnections?: RouteConnection[];
 }) {
-  const [uiMode, setUiMode] = useState<'explore' | 'guided'>(
-    displayMode === 'guided_only' ? 'guided' : 'explore'
-  );
+  const [showRoutes, setShowRoutes] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedPoiId, setSelectedPoiId] = useState<string | null>(null);
   const [leafletModule, setLeafletModule] = useState<typeof import('leaflet') | null>(null);
@@ -94,6 +96,8 @@ export function PublicLeafletMap({
           ...poi,
           latitude: Number(poi.latitude),
           longitude: Number(poi.longitude),
+          route_anchor_lat: poi.route_anchor_lat == null ? null : Number(poi.route_anchor_lat),
+          route_anchor_lng: poi.route_anchor_lng == null ? null : Number(poi.route_anchor_lng),
         }))
         .filter((poi) => Number.isFinite(poi.latitude) && Number.isFinite(poi.longitude)),
     [pois]
@@ -115,9 +119,22 @@ export function PublicLeafletMap({
       (routeConnections ?? [])
         .slice()
         .sort((a, b) => a.order_index - b.order_index)
+        .filter((route) => route.connection_type !== 'internal_transfer')
         .map((route) => {
-          const from = pointsById.get(route.from_poi_id);
-          const to = pointsById.get(route.to_poi_id);
+          const fromPoi = normalizedPois.find((poi) => poi.id === route.from_poi_id);
+          const toPoi = normalizedPois.find((poi) => poi.id === route.to_poi_id);
+          const from = fromPoi
+            ? [
+                Number.isFinite(Number(fromPoi.route_anchor_lat)) ? Number(fromPoi.route_anchor_lat) : fromPoi.latitude,
+                Number.isFinite(Number(fromPoi.route_anchor_lng)) ? Number(fromPoi.route_anchor_lng) : fromPoi.longitude,
+              ]
+            : pointsById.get(route.from_poi_id);
+          const to = toPoi
+            ? [
+                Number.isFinite(Number(toPoi.route_anchor_lat)) ? Number(toPoi.route_anchor_lat) : toPoi.latitude,
+                Number.isFinite(Number(toPoi.route_anchor_lng)) ? Number(toPoi.route_anchor_lng) : toPoi.longitude,
+              ]
+            : pointsById.get(route.to_poi_id);
           if (!from || !to) return null;
           return {
             id: route.id,
@@ -130,6 +147,25 @@ export function PublicLeafletMap({
     [pointsById, routeConnections]
   );
 
+  const internalTransfers = useMemo(
+    () =>
+      (routeConnections ?? [])
+        .filter((route) => route.connection_type === 'internal_transfer')
+        .sort((a, b) => a.order_index - b.order_index)
+        .map((route) => {
+          const from = normalizedPois.find((poi) => poi.id === route.from_poi_id);
+          const to = normalizedPois.find((poi) => poi.id === route.to_poi_id);
+          return {
+            id: route.id,
+            order: route.order_index,
+            label: route.transfer_note || 'Transfer indoors to next stop.',
+            fromTitle: from?.title ?? 'Unknown stop',
+            toTitle: to?.title ?? 'Unknown stop',
+          };
+        }),
+    [routeConnections, normalizedPois]
+  );
+
   const centerPoint: LatLngExpression =
     center.lat != null && center.lng != null
       ? [Number(center.lat), Number(center.lng)]
@@ -137,23 +173,21 @@ export function PublicLeafletMap({
         ? [stops[0].latitude, stops[0].longitude]
         : [42.7167, -73.7519];
 
-  const activeStop = stops[activeIndex] ?? null;
   const guidedLine = stops.map((stop) => [stop.latitude, stop.longitude] as [number, number]);
   const tilePreset = resolveTilePreset(themePreset);
-  const showGuidedLines = uiMode === 'guided' || displayMode === 'guided_only';
+  const showGuidedLines = showRoutes;
 
   const selectedPoi = useMemo(() => {
     if (selectedPoiId) {
       const found = normalizedPois.find((poi) => poi.id === selectedPoiId);
       if (found) return found;
     }
-    if (uiMode === 'guided') return activeStop;
     return null;
-  }, [selectedPoiId, normalizedPois, uiMode, activeStop]);
+  }, [selectedPoiId, normalizedPois]);
 
   const groupedByCategory = useMemo(() => {
     const groups = new Map<string, { key: string; label: string; items: typeof normalizedPois }>();
-    const list = uiMode === 'guided' ? stops : normalizedPois;
+    const list = normalizedPois;
 
     for (const poi of list) {
       const category = Array.isArray(poi.categories) ? poi.categories[0] : poi.categories;
@@ -168,7 +202,7 @@ export function PublicLeafletMap({
     }
 
     return Array.from(groups.values()).sort((a, b) => a.label.localeCompare(b.label));
-  }, [normalizedPois, stops, uiMode]);
+  }, [normalizedPois]);
 
   function getMarkerIcon(poi: Poi) {
     if (!leafletModule) return undefined;
@@ -231,12 +265,6 @@ export function PublicLeafletMap({
     return () => controller.abort();
   }, [explicitRoutes, showGuidedLines, routeMode]);
 
-  useEffect(() => {
-    if (uiMode === 'guided' && activeStop) {
-      setSelectedPoiId(activeStop.id);
-    }
-  }, [uiMode, activeStop]);
-
   return (
     <section className="grid gap-4 lg:grid-cols-[2fr_1fr]">
       <div className="overflow-hidden rounded-xl border border-black/10 bg-white">
@@ -244,26 +272,17 @@ export function PublicLeafletMap({
           <p className="text-sm font-medium">Interactive Map</p>
           <div className="flex items-center gap-3">
             <p className="text-xs text-black/65">{tilePreset.label}</p>
-            {displayMode === 'both' ? (
-              <div className="inline-flex rounded-md border border-black/15 p-1 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setUiMode('explore')}
-                  className={`rounded px-2 py-1 ${uiMode === 'explore' ? 'bg-[var(--brand)] text-white' : ''}`}
-                >
-                  Explore
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setUiMode('guided')}
-                  className={`rounded px-2 py-1 ${uiMode === 'guided' ? 'bg-[var(--brand)] text-white' : ''}`}
-                >
-                  Guided
-                </button>
-              </div>
-            ) : (
-              <p className="text-xs text-black/65">{displayMode === 'guided_only' ? 'Guided Tour' : 'Explore'}</p>
-            )}
+            <button
+              type="button"
+              onClick={() => setShowRoutes((current) => !current)}
+              className={`rounded-md border px-2.5 py-1 text-xs font-semibold ${
+                showRoutes
+                  ? 'border-[var(--brand)] bg-[var(--brand)] text-white'
+                  : 'border-black/15 bg-white text-black/70'
+              }`}
+            >
+              {showRoutes ? 'Hide Route' : 'Show Route'}
+            </button>
           </div>
         </div>
 
@@ -294,7 +313,7 @@ export function PublicLeafletMap({
             ) : null}
 
             {leafletModule
-              ? (uiMode === 'guided' ? stops : normalizedPois).map((poi, index) => (
+              ? normalizedPois.map((poi, index) => (
                   <Marker
                     key={poi.id}
                     position={[poi.latitude, poi.longitude]}
@@ -329,9 +348,7 @@ export function PublicLeafletMap({
               target={
                 selectedPoi
                   ? ([selectedPoi.latitude, selectedPoi.longitude] as LatLngExpression)
-                  : uiMode === 'guided' && activeStop
-                    ? ([activeStop.latitude, activeStop.longitude] as LatLngExpression)
-                    : null
+                  : null
               }
             />
           </MapContainer>
@@ -352,26 +369,6 @@ export function PublicLeafletMap({
               {selectedPoi.title}
             </p>
             {selectedPoi.description ? <p className="mt-1 text-black/70">{selectedPoi.description}</p> : null}
-            {uiMode === 'guided' ? (
-              <div className="mt-3 flex gap-2">
-                <button
-                  type="button"
-                  disabled={activeIndex <= 0}
-                  onClick={() => setActiveIndex((i) => Math.max(i - 1, 0))}
-                  className="rounded border border-black/15 px-2 py-1 text-xs disabled:opacity-50"
-                >
-                  Previous
-                </button>
-                <button
-                  type="button"
-                  disabled={activeIndex >= stops.length - 1}
-                  onClick={() => setActiveIndex((i) => Math.min(i + 1, stops.length - 1))}
-                  className="rounded border border-black/15 px-2 py-1 text-xs disabled:opacity-50"
-                >
-                  Next
-                </button>
-              </div>
-            ) : null}
           </div>
         ) : null}
 
@@ -393,7 +390,6 @@ export function PublicLeafletMap({
                         const idx = stops.findIndex((poi) => poi.id === stop.id);
                         if (idx >= 0) setActiveIndex(idx);
                         setSelectedPoiId(stop.id);
-                        if (displayMode === 'guided_only') setUiMode('guided');
                       }}
                       className={`w-full rounded-lg border px-3 py-2 text-left text-sm ${
                         selected ? 'border-[var(--brand)] bg-[var(--surface-muted)]' : 'border-black/10'
@@ -409,6 +405,24 @@ export function PublicLeafletMap({
               </div>
             </section>
           ))}
+          {internalTransfers.length > 0 ? (
+            <section className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-semibold uppercase tracking-[0.07em] text-black/60">Internal Transfers</h3>
+                <span className="text-[11px] text-black/45">{internalTransfers.length}</span>
+              </div>
+              <div className="space-y-1.5">
+                {internalTransfers.map((transfer) => (
+                  <div key={transfer.id} className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                    <p className="font-semibold">
+                      {transfer.order}. {transfer.fromTitle} {'->'} {transfer.toTitle}
+                    </p>
+                    <p>{transfer.label}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
         </div>
       </aside>
     </section>

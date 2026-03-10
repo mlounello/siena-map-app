@@ -10,7 +10,7 @@ const updateStopsSchema = z.object({
 
 const DEFAULT_CONNECTION_STYLE = {
   line_style: 'solid',
-  line_color: '#8b1f41',
+  line_color: '#006b54',
   line_thickness: 4,
   is_directional: false,
 };
@@ -57,6 +57,33 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const existing = new Set((pois ?? []).map((poi) => poi.id));
     const missing = orderedPoiIds.filter((poiId) => !existing.has(poiId));
     if (missing.length > 0) return badRequest('One or more POIs are not part of this map');
+  }
+
+  const poiStyleById = new Map<string, { line_color: string; line_thickness: number }>();
+  const poiAnchorById = new Map<string, { lat: number | null; lng: number | null }>();
+  if (orderedPoiIds.length > 0) {
+    const { data: styleRows, error: styleError } = await db
+      .from('pois')
+      .select('id, pin_color, route_anchor_lat, route_anchor_lng, categories:category_id(color)')
+      .eq('map_id', guidedRoute.map_id)
+      .in('id', orderedPoiIds);
+
+    if (styleError) return serverError(styleError.message);
+
+    for (const row of styleRows ?? []) {
+      const category = Array.isArray((row as any).categories)
+        ? (row as any).categories[0]
+        : (row as any).categories;
+      const color =
+        ((row as any).pin_color as string | null | undefined) ??
+        (category?.color as string | null | undefined) ??
+        DEFAULT_CONNECTION_STYLE.line_color;
+      poiStyleById.set((row as any).id, { line_color: color, line_thickness: DEFAULT_CONNECTION_STYLE.line_thickness });
+      poiAnchorById.set((row as any).id, {
+        lat: (row as any).route_anchor_lat == null ? null : Number((row as any).route_anchor_lat),
+        lng: (row as any).route_anchor_lng == null ? null : Number((row as any).route_anchor_lng),
+      });
+    }
   }
 
   const { error: deleteStopsError } = await db
@@ -107,13 +134,38 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   if (deleteConnectionsError) return serverError(deleteConnectionsError.message);
 
   const generatedConnections = [];
+  let internalTransferCount = 0;
   for (let index = 0; index < orderedPoiIds.length - 1; index += 1) {
+    const fromPoiId = orderedPoiIds[index];
+    const toPoiId = orderedPoiIds[index + 1];
+    const style = poiStyleById.get(fromPoiId) ?? {
+      line_color: DEFAULT_CONNECTION_STYLE.line_color,
+      line_thickness: DEFAULT_CONNECTION_STYLE.line_thickness,
+    };
+
+    const fromAnchor = poiAnchorById.get(fromPoiId);
+    const toAnchor = poiAnchorById.get(toPoiId);
+    const hasBothAnchors =
+      Number.isFinite(fromAnchor?.lat) &&
+      Number.isFinite(fromAnchor?.lng) &&
+      Number.isFinite(toAnchor?.lat) &&
+      Number.isFinite(toAnchor?.lng);
+    if (!hasBothAnchors) internalTransferCount += 1;
+
     generatedConnections.push({
       map_id: guidedRoute.map_id,
-      from_poi_id: orderedPoiIds[index],
-      to_poi_id: orderedPoiIds[index + 1],
+      from_poi_id: fromPoiId,
+      to_poi_id: toPoiId,
       order_index: index + 1,
-      ...DEFAULT_CONNECTION_STYLE,
+      line_style: DEFAULT_CONNECTION_STYLE.line_style,
+      line_color: hasBothAnchors ? style.line_color : null,
+      line_thickness: hasBothAnchors ? style.line_thickness : 0,
+      is_directional: DEFAULT_CONNECTION_STYLE.is_directional,
+      connection_type: hasBothAnchors ? 'outdoor_routed' : 'internal_transfer',
+      transfer_note: hasBothAnchors
+        ? null
+        : 'Transfer indoors to the next stop (door anchor missing).',
+      label: hasBothAnchors ? null : 'Internal transfer',
       status: 'published',
       created_by: profile.id,
     });
@@ -132,5 +184,6 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     mapId: guidedRoute.map_id,
     stopCount: orderedPoiIds.length,
     connectionCount: generatedConnections.length,
+    internalTransferCount,
   });
 }

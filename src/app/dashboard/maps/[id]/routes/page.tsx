@@ -6,7 +6,13 @@ import { AppShell, Button, EmptyState, PageHeader, SectionCard, StatusMessage } 
 import { FormField, SelectInput, TextInput } from '@/components/ui/form-controls';
 import { LoadingRows } from '@/components/ui/loading';
 
-type Poi = { id: string; title: string; stop_number: number | null };
+type Poi = {
+  id: string;
+  title: string;
+  stop_number: number | null;
+  route_anchor_lat: number | null;
+  route_anchor_lng: number | null;
+};
 type GuidedRoute = { id: string; map_id: string; title: string; is_primary: boolean };
 type GuidedRouteStop = {
   id: string;
@@ -85,6 +91,8 @@ export default function GuidedRouteEditorPage() {
       id: poi.id,
       title: poi.title,
       stop_number: poi.stop_number,
+      route_anchor_lat: poi.route_anchor_lat == null ? null : Number(poi.route_anchor_lat),
+      route_anchor_lng: poi.route_anchor_lng == null ? null : Number(poi.route_anchor_lng),
     }));
     setPois(loadedPois);
 
@@ -130,6 +138,22 @@ export default function GuidedRouteEditorPage() {
     () => pois.filter((poi) => !orderedPoiIds.includes(poi.id)),
     [pois, orderedPoiIds]
   );
+
+  const anchorWarnings = useMemo(() => {
+    const warnings: string[] = [];
+    for (let index = 0; index < orderedPoiIds.length - 1; index += 1) {
+      const from = poiById.get(orderedPoiIds[index]);
+      const to = poiById.get(orderedPoiIds[index + 1]);
+      const fromOk = from?.route_anchor_lat != null && from?.route_anchor_lng != null;
+      const toOk = to?.route_anchor_lat != null && to?.route_anchor_lng != null;
+      if (!fromOk || !toOk) {
+        warnings.push(
+          `${index + 1}. ${from?.title ?? 'Unknown'} -> ${to?.title ?? 'Unknown'} will be marked internal transfer (missing door anchor).`
+        );
+      }
+    }
+    return warnings;
+  }, [orderedPoiIds, poiById]);
 
   async function createGuidedRoute(e: React.FormEvent) {
     e.preventDefault();
@@ -200,7 +224,11 @@ export default function GuidedRouteEditorPage() {
 
     if (!res.ok) return setMessage(json.error ?? 'Failed to save route stops');
 
-    setMessage(`Saved ${json.stopCount} stop(s) and generated ${json.connectionCount} route segment(s).`);
+    const internalTransferCount = Number(json.internalTransferCount ?? 0);
+    setMessage(
+      `Saved ${json.stopCount} stop(s) and generated ${json.connectionCount} route segment(s).` +
+        (internalTransferCount > 0 ? ` ${internalTransferCount} segment(s) marked as internal transfer.` : '')
+    );
     await load();
   }
 
@@ -263,7 +291,17 @@ export default function GuidedRouteEditorPage() {
                 description="Add POIs, then save route order to generate explicit connection segments."
               />
             ) : (
-              <div className="mt-4 space-y-2">
+              <div className="mt-4 space-y-3">
+                {anchorWarnings.length > 0 ? (
+                  <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                    <p className="font-semibold">Anchor warnings</p>
+                    <ul className="mt-1 space-y-0.5">
+                      {anchorWarnings.map((warning, idx) => (
+                        <li key={`warn-${idx}`}>{warning}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
                 {orderedPoiIds.map((poiId, index) => {
                   const poi = poiById.get(poiId);
                   return (
@@ -280,7 +318,11 @@ export default function GuidedRouteEditorPage() {
                       </span>
                       <div>
                         <p className="row-title">{poi?.title ?? 'Unknown POI'}</p>
-                        <p className="row-meta">Drag to reorder or use arrow controls.</p>
+                        <p className="row-meta">
+                          {poi?.route_anchor_lat != null && poi?.route_anchor_lng != null
+                            ? 'Door anchor set. Outdoor routed segment eligible.'
+                            : 'No door anchor. Adjacent segments become internal transfer.'}
+                        </p>
                       </div>
                       <div className="flex items-center gap-1">
                         <Button variant="ghost" onClick={() => moveStop(poiId, 'up')} disabled={index === 0}>

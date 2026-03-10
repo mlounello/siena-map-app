@@ -12,6 +12,8 @@ const updateSchema = z.object({
   line_thickness: z.number().int().min(1).max(20).optional(),
   is_directional: z.boolean().optional(),
   label: z.string().max(120).nullable().optional(),
+  connection_type: z.enum(['outdoor_routed', 'internal_transfer']).optional(),
+  transfer_note: z.string().max(280).nullable().optional(),
   status: z.enum(['unpublished', 'published', 'archived']).optional(),
 });
 

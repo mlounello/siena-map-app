@@ -30,7 +30,7 @@ export default async function MapPreviewPage({ params }: { params: Promise<{ id:
 
   const { data: pois } = await db
     .from('pois')
-    .select('id, title, description, latitude, longitude, stop_number, status, category_id, pin_color, categories:category_id(id, name, icon, color)')
+    .select('id, title, description, latitude, longitude, route_anchor_lat, route_anchor_lng, stop_number, status, category_id, pin_color, categories:category_id(id, name, icon, color)')
     .eq('map_id', map.id)
     .neq('status', 'archived')
     .order('stop_number', { ascending: true, nullsFirst: false })
@@ -38,7 +38,7 @@ export default async function MapPreviewPage({ params }: { params: Promise<{ id:
 
   const { data: routeConnections } = await db
     .from('route_connections')
-    .select('id, from_poi_id, to_poi_id, order_index, line_color, line_thickness, status')
+    .select('id, from_poi_id, to_poi_id, order_index, line_color, line_thickness, connection_type, transfer_note, status')
     .eq('map_id', map.id)
     .neq('status', 'archived')
     .order('order_index', { ascending: true });
@@ -75,6 +75,8 @@ export default async function MapPreviewPage({ params }: { params: Promise<{ id:
           description: poi.description,
           latitude: poi.latitude,
           longitude: poi.longitude,
+          route_anchor_lat: poi.route_anchor_lat,
+          route_anchor_lng: poi.route_anchor_lng,
           stop_number: poi.stop_number,
           category_id: poi.category_id,
           pin_color: poi.pin_color,
