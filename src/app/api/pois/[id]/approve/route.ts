@@ -1,7 +1,8 @@
-import { badRequest, ok, serverError, unauthorized } from '@/lib/api/http';
+import { badRequest, forbidden, ok, serverError, unauthorized } from '@/lib/api/http';
 import { requireRole } from '@/lib/auth/roles';
 import { createDbClient } from '@/lib/supabase/server';
 import { canTransitionPoi, shouldAutoPublishOnApproval } from '@/lib/siena/workflows';
+import { canEditPoi } from '@/lib/auth/access';
 import type { Poi } from '@/types/siena-maps';
 
 export async function POST(_: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -12,12 +13,13 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
   const { db } = await createDbClient();
   const { data: current, error: readError } = await db
     .from('pois')
-    .select('id, status, publish_on_approval, scheduled_publish_at')
+    .select('id, map_id, owning_department_id, created_by, status, publish_on_approval, scheduled_publish_at')
     .eq('id', id)
     .maybeSingle();
 
   if (readError) return serverError(readError.message);
   if (!current) return badRequest('POI not found');
+  if (!(await canEditPoi(profile, current))) return forbidden();
 
   if (!canTransitionPoi(current.status, 'approved', profile.role)) {
     return badRequest('Invalid POI transition to approved');

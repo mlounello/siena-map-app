@@ -3,6 +3,7 @@ import { badRequest, forbidden, ok, serverError, unauthorized } from '@/lib/api/
 import { requireRole } from '@/lib/auth/roles';
 import { createDbClient } from '@/lib/supabase/server';
 import { canEditMap } from '@/lib/auth/access';
+import { hasMinRole } from '@/lib/siena/permissions';
 import type { MapRecord } from '@/types/siena-maps';
 
 const updateMapSchema = z.object({
@@ -49,6 +50,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const parsed = updateMapSchema.safeParse(body);
   if (!parsed.success) {
     return badRequest(parsed.error.issues.map((i) => i.message).join(', '));
+  }
+
+  // Governance-sensitive setting: only department heads and above can modify publish gating.
+  if (
+    Object.prototype.hasOwnProperty.call(parsed.data, 'require_anchors_for_publish') &&
+    !hasMinRole(profile.role, 'department_head')
+  ) {
+    return forbidden('Only Department Head and above can change anchor publish requirements.');
   }
 
   const { db } = await createDbClient();

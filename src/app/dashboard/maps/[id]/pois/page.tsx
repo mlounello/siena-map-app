@@ -51,6 +51,8 @@ type MapRecord = {
   primary_department_id: string;
 };
 
+type PlatformRole = 'owner' | 'super_admin' | 'department_head' | 'editor' | 'viewer';
+
 type PoiFormState = {
   title: string;
   description: string;
@@ -78,6 +80,7 @@ export default function PoisPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [routeConnections, setRouteConnections] = useState<RouteConnection[]>([]);
   const [message, setMessage] = useState('');
+  const [role, setRole] = useState<PlatformRole | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingPoiId, setEditingPoiId] = useState<string | null>(null);
 
@@ -91,6 +94,18 @@ export default function PoisPage() {
     category_id: '',
     pin_color: '',
   });
+
+  function hasMinRole(required: PlatformRole) {
+    if (!role) return false;
+    const rank: Record<PlatformRole, number> = {
+      viewer: 10,
+      editor: 20,
+      department_head: 30,
+      super_admin: 40,
+      owner: 50,
+    };
+    return rank[role] >= rank[required];
+  }
 
   function parseOptionalCoordinate(value: string): number {
     const trimmed = value.trim();
@@ -181,6 +196,23 @@ export default function PoisPage() {
     if (mapId) void load(mapId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch('/api/auth/check', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((json) => {
+        if (cancelled) return;
+        setRole((json?.profile?.role as PlatformRole | undefined) ?? null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setRole(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const builderCenter = useMemo<[number, number]>(() => {
     if (
@@ -311,7 +343,13 @@ export default function PoisPage() {
                 setForm((prev) => ({ ...prev, route_anchor_lat: lat.toFixed(6), route_anchor_lng: lng.toFixed(6) }));
                 setMessage('Door anchor set from right-click location. Save POI to persist.');
               }}
-              onMovePoi={movePoi}
+              onMovePoi={
+                hasMinRole('editor')
+                  ? movePoi
+                  : async () => {
+                      setMessage('You do not have permission to move POIs.');
+                    }
+              }
             />
           )}
         </SectionCard>
@@ -333,70 +371,74 @@ export default function PoisPage() {
             ) : null
           }
         >
-          <form onSubmit={savePoi} className="form-grid">
-            <FormField label="Title">
-              <TextInput value={form.title} onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))} required />
-            </FormField>
-
-            <div className="form-row md:grid-cols-2">
-              <FormField label="Latitude">
-                <TextInput value={form.latitude} onChange={(e) => setForm((prev) => ({ ...prev, latitude: e.target.value }))} required />
+          {hasMinRole('editor') ? (
+            <form onSubmit={savePoi} className="form-grid">
+              <FormField label="Title">
+                <TextInput value={form.title} onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))} required />
               </FormField>
-              <FormField label="Longitude">
-                <TextInput value={form.longitude} onChange={(e) => setForm((prev) => ({ ...prev, longitude: e.target.value }))} required />
+
+              <div className="form-row md:grid-cols-2">
+                <FormField label="Latitude">
+                  <TextInput value={form.latitude} onChange={(e) => setForm((prev) => ({ ...prev, latitude: e.target.value }))} required />
+                </FormField>
+                <FormField label="Longitude">
+                  <TextInput value={form.longitude} onChange={(e) => setForm((prev) => ({ ...prev, longitude: e.target.value }))} required />
+                </FormField>
+              </div>
+
+              <div className="form-row md:grid-cols-2">
+                <FormField label="Door anchor latitude (optional)">
+                  <TextInput value={form.route_anchor_lat} onChange={(e) => setForm((prev) => ({ ...prev, route_anchor_lat: e.target.value }))} />
+                </FormField>
+                <FormField label="Door anchor longitude (optional)">
+                  <TextInput value={form.route_anchor_lng} onChange={(e) => setForm((prev) => ({ ...prev, route_anchor_lng: e.target.value }))} />
+                </FormField>
+              </div>
+
+              <div className="action-bar">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setForm((prev) => ({ ...prev, route_anchor_lat: prev.latitude, route_anchor_lng: prev.longitude }))}
+                >
+                  Use current pin as door anchor
+                </Button>
+              </div>
+
+              <FormField label="Description">
+                <TextArea rows={3} value={form.description} onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))} />
               </FormField>
-            </div>
 
-            <div className="form-row md:grid-cols-2">
-              <FormField label="Door anchor latitude (optional)">
-                <TextInput value={form.route_anchor_lat} onChange={(e) => setForm((prev) => ({ ...prev, route_anchor_lat: e.target.value }))} />
+              <div className="form-row md:grid-cols-2">
+                <FormField label="Category">
+                  <SelectInput value={form.category_id} onChange={(e) => setForm((prev) => ({ ...prev, category_id: e.target.value }))}>
+                    <option value="">None</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </SelectInput>
+                </FormField>
+              </div>
+
+              <FormField label="Owning department">
+                <TextInput
+                  value={
+                    mapRecord?.primary_department_id
+                      ? departmentById[mapRecord.primary_department_id] ?? 'Primary department'
+                      : 'Primary department not set'
+                  }
+                  readOnly
+                  disabled
+                />
               </FormField>
-              <FormField label="Door anchor longitude (optional)">
-                <TextInput value={form.route_anchor_lng} onChange={(e) => setForm((prev) => ({ ...prev, route_anchor_lng: e.target.value }))} />
-              </FormField>
-            </div>
 
-            <div className="action-bar">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => setForm((prev) => ({ ...prev, route_anchor_lat: prev.latitude, route_anchor_lng: prev.longitude }))}
-              >
-                Use current pin as door anchor
-              </Button>
-            </div>
-
-            <FormField label="Description">
-              <TextArea rows={3} value={form.description} onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))} />
-            </FormField>
-
-            <div className="form-row md:grid-cols-2">
-              <FormField label="Category">
-                <SelectInput value={form.category_id} onChange={(e) => setForm((prev) => ({ ...prev, category_id: e.target.value }))}>
-                  <option value="">None</option>
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </SelectInput>
-              </FormField>
-            </div>
-
-            <FormField label="Owning department">
-              <TextInput
-                value={
-                  mapRecord?.primary_department_id
-                    ? departmentById[mapRecord.primary_department_id] ?? 'Primary department'
-                    : 'Primary department not set'
-                }
-                readOnly
-                disabled
-              />
-            </FormField>
-
-            <Button type="submit">{editingPoiId ? 'Save POI Updates' : 'Create POI'}</Button>
-          </form>
+              <Button type="submit">{editingPoiId ? 'Save POI Updates' : 'Create POI'}</Button>
+            </form>
+          ) : (
+            <EmptyState title="Read-only access" description="Editors and above can create and update POIs." />
+          )}
         </SectionCard>
       </div>
 
@@ -435,38 +477,52 @@ export default function PoisPage() {
                     ) : null}
                   </div>
                   <div className="action-bar">
-                    <Button variant="secondary" onClick={() => loadPoiIntoForm(poi)}>
-                      Edit
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={async () => {
-                        const res = await fetch(`/api/pois/${poi.id}`, {
-                          method: 'PATCH',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ route_anchor_lat: poi.latitude, route_anchor_lng: poi.longitude }),
-                        });
-                        const json = await res.json();
-                        if (!res.ok) return setMessage(json.error ?? 'Failed to set door anchor from pin');
-                        setMessage('Door anchor set from current pin location.');
-                        await load(mapId);
-                      }}
-                    >
-                      Set Door = Pin
-                    </Button>
-                    <Button variant="secondary" onClick={() => actionPoi(poi.id, 'submit')}>
-                      Submit
-                    </Button>
-                    <Button variant="secondary" onClick={() => actionPoi(poi.id, 'approve')}>
-                      Approve
-                    </Button>
-                    <Button variant="danger" onClick={() => actionPoi(poi.id, 'reject')}>
-                      Reject
-                    </Button>
-                    <Button onClick={() => actionPoi(poi.id, 'publish')}>Publish</Button>
-                    <Button variant="danger" onClick={() => actionPoi(poi.id, 'archive')}>
-                      Archive
-                    </Button>
+                    {hasMinRole('editor') ? (
+                      <Button variant="secondary" onClick={() => loadPoiIntoForm(poi)}>
+                        Edit
+                      </Button>
+                    ) : null}
+                    {hasMinRole('editor') ? (
+                      <Button
+                        variant="secondary"
+                        onClick={async () => {
+                          const res = await fetch(`/api/pois/${poi.id}`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ route_anchor_lat: poi.latitude, route_anchor_lng: poi.longitude }),
+                          });
+                          const json = await res.json();
+                          if (!res.ok) return setMessage(json.error ?? 'Failed to set door anchor from pin');
+                          setMessage('Door anchor set from current pin location.');
+                          await load(mapId);
+                        }}
+                      >
+                        Set Door = Pin
+                      </Button>
+                    ) : null}
+                    {hasMinRole('editor') ? (
+                      <Button variant="secondary" onClick={() => actionPoi(poi.id, 'submit')}>
+                        Submit
+                      </Button>
+                    ) : null}
+                    {hasMinRole('department_head') ? (
+                      <Button variant="secondary" onClick={() => actionPoi(poi.id, 'approve')}>
+                        Approve
+                      </Button>
+                    ) : null}
+                    {hasMinRole('department_head') ? (
+                      <Button variant="danger" onClick={() => actionPoi(poi.id, 'reject')}>
+                        Reject
+                      </Button>
+                    ) : null}
+                    {hasMinRole('department_head') ? (
+                      <Button onClick={() => actionPoi(poi.id, 'publish')}>Publish</Button>
+                    ) : null}
+                    {hasMinRole('department_head') ? (
+                      <Button variant="danger" onClick={() => actionPoi(poi.id, 'archive')}>
+                        Archive
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
                 {poi.description ? <p className="mt-2 text-sm text-black/75">{poi.description}</p> : null}

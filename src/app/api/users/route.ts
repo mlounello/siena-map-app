@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { badRequest, ok, serverError, unauthorized } from '@/lib/api/http';
+import { badRequest, forbidden, ok, serverError, unauthorized } from '@/lib/api/http';
 import { requireRole } from '@/lib/auth/roles';
 import { createDbClient } from '@/lib/supabase/server';
 
@@ -31,11 +31,24 @@ export async function PATCH(request: Request) {
   const parsed = updateSchema.safeParse(body);
   if (!parsed.success) return badRequest(parsed.error.issues.map((i) => i.message).join(', '));
 
-  if (parsed.data.role === 'owner' && actor.role !== 'owner') {
-    return unauthorized('Only owner can assign owner role');
+  const { db } = await createDbClient();
+  const { data: targetProfile, error: targetError } = await db
+    .from('profiles')
+    .select('id, role')
+    .eq('id', parsed.data.user_id)
+    .maybeSingle();
+
+  if (targetError) return serverError(targetError.message);
+  if (!targetProfile) return badRequest('User not found');
+
+  if (targetProfile.role === 'owner' && actor.role !== 'owner') {
+    return forbidden('Only owner can modify owner accounts');
   }
 
-  const { db } = await createDbClient();
+  if (parsed.data.role === 'owner' && actor.role !== 'owner') {
+    return forbidden('Only owner can assign owner role');
+  }
+
   const { data, error } = await db
     .from('profiles')
     .update({ role: parsed.data.role })

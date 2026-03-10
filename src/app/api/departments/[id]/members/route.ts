@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { badRequest, created, ok, serverError, unauthorized } from '@/lib/api/http';
+import { badRequest, created, forbidden, ok, serverError, unauthorized } from '@/lib/api/http';
 import { requireRole } from '@/lib/auth/roles';
 import { createDbClient } from '@/lib/supabase/server';
 
@@ -12,6 +12,27 @@ const updateSchema = z.object({
   user_id: z.string().uuid(),
   role: z.enum(['department_head', 'editor', 'viewer']),
 });
+
+async function canManageDepartmentMembers(
+  db: Awaited<ReturnType<typeof createDbClient>>['db'],
+  profileId: string,
+  role: 'owner' | 'super_admin' | 'department_head' | 'editor' | 'viewer',
+  departmentId: string
+) {
+  if (role === 'owner' || role === 'super_admin') return true;
+  if (role !== 'department_head') return false;
+
+  const { data, error } = await db
+    .from('department_memberships')
+    .select('id')
+    .eq('department_id', departmentId)
+    .eq('user_id', profileId)
+    .eq('role', 'department_head')
+    .maybeSingle();
+
+  if (error) return false;
+  return !!data;
+}
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const profile = await requireRole('viewer');
@@ -39,6 +60,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!parsed.success) return badRequest(parsed.error.issues.map((i) => i.message).join(', '));
 
   const { db } = await createDbClient();
+  const allowed = await canManageDepartmentMembers(db, profile.id, profile.role, id);
+  if (!allowed) return forbidden('You do not have permission to manage members for this department.');
+
   const { data, error } = await db
     .from('department_memberships')
     .insert({
@@ -64,6 +88,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (!parsed.success) return badRequest(parsed.error.issues.map((i) => i.message).join(', '));
 
   const { db } = await createDbClient();
+  const allowed = await canManageDepartmentMembers(db, profile.id, profile.role, id);
+  if (!allowed) return forbidden('You do not have permission to manage members for this department.');
+
   const { data, error } = await db
     .from('department_memberships')
     .update({ role: parsed.data.role })

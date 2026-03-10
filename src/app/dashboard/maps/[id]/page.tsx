@@ -34,6 +34,8 @@ type MapDetail = {
   publication_status: string;
 };
 
+type PlatformRole = 'owner' | 'super_admin' | 'department_head' | 'editor' | 'viewer';
+
 type PublishBlocker = {
   poi_id: string;
   title: string;
@@ -53,8 +55,21 @@ export default function MapDetailPage() {
   const mapId = params.id;
   const [map, setMap] = useState<MapDetail | null>(null);
   const [message, setMessage] = useState('');
+  const [role, setRole] = useState<PlatformRole | null>(null);
   const [publishBlockers, setPublishBlockers] = useState<PublishBlocker[]>([]);
   const [publishBlockSummary, setPublishBlockSummary] = useState<PublishBlockSummary | null>(null);
+
+  function hasMinRole(required: PlatformRole) {
+    if (!role) return false;
+    const rank: Record<PlatformRole, number> = {
+      viewer: 10,
+      editor: 20,
+      department_head: 30,
+      super_admin: 40,
+      owner: 50,
+    };
+    return rank[role] >= rank[required];
+  }
 
   async function load(id: string) {
     const res = await fetch(`/api/maps/${id}`, { cache: 'no-store' });
@@ -66,6 +81,23 @@ export default function MapDetailPage() {
   useEffect(() => {
     if (mapId) void load(mapId);
   }, [mapId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch('/api/auth/check', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((json) => {
+        if (cancelled) return;
+        setRole((json?.profile?.role as PlatformRole | undefined) ?? null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setRole(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function saveBasics(e: React.FormEvent) {
     e.preventDefault();
@@ -273,24 +305,26 @@ export default function MapDetailPage() {
                 <option value="driving">Driving</option>
               </SelectInput>
             </FormField>
-            <FormField
-              label="Require anchors for publish"
-              hint="When enabled, publishing is blocked only for guided-route stops that break anchored route continuity."
-            >
-              <SelectInput
-                value={map.require_anchors_for_publish ? 'true' : 'false'}
-                onChange={(e) =>
-                  setMap((p) =>
-                    p
-                      ? { ...p, require_anchors_for_publish: e.target.value === 'true' }
-                      : p
-                  )
-                }
+            {hasMinRole('department_head') ? (
+              <FormField
+                label="Require anchors for publish"
+                hint="When enabled, publishing is blocked only for guided-route stops that break anchored route continuity."
               >
-                <option value="false">Disabled</option>
-                <option value="true">Enabled</option>
-              </SelectInput>
-            </FormField>
+                <SelectInput
+                  value={map.require_anchors_for_publish ? 'true' : 'false'}
+                  onChange={(e) =>
+                    setMap((p) =>
+                      p
+                        ? { ...p, require_anchors_for_publish: e.target.value === 'true' }
+                        : p
+                    )
+                  }
+                >
+                  <option value="false">Disabled</option>
+                  <option value="true">Enabled</option>
+                </SelectInput>
+              </FormField>
+            ) : null}
           </div>
 
           <ActionBar>
@@ -301,11 +335,21 @@ export default function MapDetailPage() {
 
       <SectionCard title="Workflow Actions" subtitle="Execute moderation and publication actions.">
         <ActionBar>
-          <Button variant="secondary" onClick={() => runAction('submit')}>Submit</Button>
-          <Button variant="secondary" onClick={() => runAction('approve')}>Approve</Button>
-          <Button variant="danger" onClick={() => runAction('reject')}>Reject</Button>
-          <Button onClick={() => runAction('publish')}>Publish</Button>
-          <Button variant="danger" onClick={() => runAction('archive')}>Archive</Button>
+          {hasMinRole('department_head') ? (
+            <Button variant="secondary" onClick={() => runAction('submit')}>Submit</Button>
+          ) : null}
+          {hasMinRole('super_admin') ? (
+            <Button variant="secondary" onClick={() => runAction('approve')}>Approve</Button>
+          ) : null}
+          {hasMinRole('super_admin') ? (
+            <Button variant="danger" onClick={() => runAction('reject')}>Reject</Button>
+          ) : null}
+          {hasMinRole('department_head') ? (
+            <Button onClick={() => runAction('publish')}>Publish</Button>
+          ) : null}
+          {hasMinRole('department_head') ? (
+            <Button variant="danger" onClick={() => runAction('archive')}>Archive</Button>
+          ) : null}
         </ActionBar>
       </SectionCard>
 
