@@ -117,7 +117,9 @@ export default function CategoriesPage() {
     <AppShell>
       <PageHeader eyebrow="Administration" title="Category Management" subtitle="Manage global categories used across maps and POIs." />
 
-      <SectionCard title="Create Category">
+      {message ? <StatusMessage>{message}</StatusMessage> : null}
+
+      <SectionCard title="Create Category" subtitle="Set default icon and color used for inherited POI pins.">
         <form onSubmit={createCategory} className="form-row md:grid-cols-5 md:items-end">
           <FormField label="Name">
             <TextInput value={createForm.name} onChange={(e) => setCreateForm((p) => ({ ...p, name: e.target.value }))} required />
@@ -205,8 +207,6 @@ export default function CategoriesPage() {
           )}
         </SectionCard>
       </div>
-
-      {message ? <StatusMessage>{message}</StatusMessage> : null}
     </AppShell>
   );
 }

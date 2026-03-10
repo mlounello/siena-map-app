@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { AppShell, Button, EmptyState, PageHeader, SectionCard, StatusMessage } from '@/components/ui/siena';
+import { AppShell, Button, DataTable, EmptyState, PageHeader, SectionCard, StatusMessage } from '@/components/ui/siena';
 import { FormField, SelectInput, TextInput } from '@/components/ui/form-controls';
 import { LoadingRows } from '@/components/ui/loading';
 
@@ -173,7 +173,9 @@ export default function DepartmentsAdminPage() {
     <AppShell>
       <PageHeader eyebrow="Administration" title="Departments" subtitle="Create departments, manage memberships, and assign department roles." />
 
-      <SectionCard title="Create Department">
+      {message ? <StatusMessage>{message}</StatusMessage> : null}
+
+      <SectionCard title="Create Department" subtitle="Add a new governance scope for maps, POIs, and roles.">
         <form onSubmit={createDepartment} className="form-row md:grid-cols-4 md:items-end">
           <FormField label="Name">
             <TextInput value={createForm.name} onChange={(e) => setCreateForm((p) => ({ ...p, name: e.target.value }))} required />
@@ -189,7 +191,7 @@ export default function DepartmentsAdminPage() {
       </SectionCard>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <SectionCard title="Department List">
+        <SectionCard title="Department List" subtitle="Select a department to edit settings or manage members.">
           {loading ? (
             <LoadingRows rows={5} />
           ) : departments.length === 0 ? (
@@ -213,7 +215,7 @@ export default function DepartmentsAdminPage() {
           )}
         </SectionCard>
 
-        <SectionCard title="Department Settings" subtitle="Edit or delete the selected department.">
+        <SectionCard title="Department Settings" subtitle="Edit, archive, restore, or delete the selected department.">
           {!selectedDepartmentId ? (
             <EmptyState title="Select a department first" />
           ) : (
@@ -247,47 +249,63 @@ export default function DepartmentsAdminPage() {
         </SectionCard>
       </div>
 
-      <SectionCard title="Members" subtitle="Assign users to selected department.">
-          <form onSubmit={addMember} className="form-grid">
-            <div className="form-row md:grid-cols-2">
-              <FormField label="User">
-                <SelectInput
-                  value={memberForm.user_id}
-                  onChange={(e) => setMemberForm((p) => ({ ...p, user_id: e.target.value }))}
-                  required
-                >
-                  <option value="">Select user</option>
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>{u.email}</option>
-                  ))}
-                </SelectInput>
-              </FormField>
-              <FormField label="Department role">
-                <SelectInput value={memberForm.role} onChange={(e) => setMemberForm((p) => ({ ...p, role: e.target.value }))}>
-                  <option value="viewer">viewer</option>
-                  <option value="editor">editor</option>
-                  <option value="department_head">department head</option>
-                </SelectInput>
-              </FormField>
+      <SectionCard title="Department Members" subtitle="Assign users to the selected department and role scope.">
+        {!selectedDepartmentId ? (
+          <EmptyState title="Select a department first" description="Member assignment is tied to a selected department." />
+        ) : (
+          <>
+            <form onSubmit={addMember} className="form-grid">
+              <div className="form-row md:grid-cols-2">
+                <FormField label="User">
+                  <SelectInput
+                    value={memberForm.user_id}
+                    onChange={(e) => setMemberForm((p) => ({ ...p, user_id: e.target.value }))}
+                    required
+                  >
+                    <option value="">Select user</option>
+                    {users.map((u) => (
+                      <option key={u.id} value={u.id}>{u.email}</option>
+                    ))}
+                  </SelectInput>
+                </FormField>
+                <FormField label="Department role">
+                  <SelectInput value={memberForm.role} onChange={(e) => setMemberForm((p) => ({ ...p, role: e.target.value }))}>
+                    <option value="viewer">viewer</option>
+                    <option value="editor">editor</option>
+                    <option value="department_head">department head</option>
+                  </SelectInput>
+                </FormField>
+              </div>
+              <div className="action-bar">
+                <Button type="submit">Add Member</Button>
+              </div>
+            </form>
+
+            <div className="mt-4">
+              {members.length === 0 ? (
+                <EmptyState title="No members in this department" />
+              ) : (
+                <DataTable>
+                  <thead>
+                    <tr>
+                      <th>User</th>
+                      <th>Role</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {members.map((member) => (
+                      <tr key={member.user_id}>
+                        <td className="row-title">{member.profiles?.email ?? userById[member.user_id] ?? 'Unknown user'}</td>
+                        <td>{member.role}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </DataTable>
+              )}
             </div>
-            <Button type="submit">Add Member</Button>
-          </form>
-
-          <div className="mt-4 space-y-2">
-            {members.length === 0 ? (
-              <EmptyState title="No members in this department" />
-            ) : (
-              members.map((member) => (
-                <div key={member.user_id} className="rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] p-3 text-sm">
-                  <p className="row-title">{member.profiles?.email ?? userById[member.user_id] ?? 'Unknown user'}</p>
-                  <p className="row-meta">{member.role}</p>
-                </div>
-              ))
-            )}
-          </div>
-        </SectionCard>
-
-      {message ? <StatusMessage>{message}</StatusMessage> : null}
+          </>
+        )}
+      </SectionCard>
     </AppShell>
   );
 }

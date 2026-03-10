@@ -2,7 +2,15 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { AppShell, Button, EmptyState, PageHeader, SectionCard, StatusMessage } from '@/components/ui/siena';
+import {
+  AppShell,
+  Button,
+  DataTable,
+  EmptyState,
+  PageHeader,
+  SectionCard,
+  StatusMessage,
+} from '@/components/ui/siena';
 import { FormField, SelectInput, TextArea, TextInput } from '@/components/ui/form-controls';
 import { LoadingRows } from '@/components/ui/loading';
 
@@ -19,6 +27,15 @@ type EmbedConfig = {
   show_cta: boolean;
   default_mode: 'explore_only' | 'guided_only' | 'both';
 };
+
+const EMBED_TOGGLES = [
+  ['show_legend', 'Show legend', 'Display map legend and category context.'],
+  ['show_search', 'Show search', 'Allow POI search from the embed toolbar.'],
+  ['show_sidebar', 'Show sidebar', 'Display the stops/details side panel.'],
+  ['show_tour_panel', 'Show tour panel', 'Show guided route controls and stop sequence.'],
+  ['show_branding', 'Show branding', 'Show Siena Maps branding in the embed shell.'],
+  ['show_cta', 'Show call-to-action', 'Show sign-in/admin access CTA where applicable.'],
+] as const;
 
 export default function EmbedPage() {
   const params = useParams<{ id: string }>();
@@ -89,10 +106,16 @@ export default function EmbedPage() {
 
   return (
     <AppShell>
-      <PageHeader eyebrow="Embed Output" title="Embed Generator" subtitle="Create reusable presets and copy embed code snippets." />
+      <PageHeader
+        eyebrow="Embed Output"
+        title="Embed Generator"
+        subtitle="Create reusable presets and copy embed code snippets for this map."
+      />
+
+      {message ? <StatusMessage>{message}</StatusMessage> : null}
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-        <SectionCard title="Preset Builder">
+        <SectionCard title="Preset Builder" subtitle="Set base dimensions, mode, and UI controls.">
           <form onSubmit={savePreset} className="form-grid">
             <div className="form-row md:grid-cols-3">
               <FormField label="Preset name">
@@ -115,28 +138,37 @@ export default function EmbedPage() {
             </FormField>
 
             <div className="grid gap-2 md:grid-cols-2">
-              {([
-                ['show_legend', 'Show legend'],
-                ['show_search', 'Show search'],
-                ['show_sidebar', 'Show sidebar'],
-                ['show_tour_panel', 'Show tour panel'],
-                ['show_branding', 'Show branding'],
-                ['show_cta', 'Show CTA'],
-              ] as const).map(([key, label]) => (
-                <label key={key} className="inline-flex items-center gap-2 rounded-md border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2 text-sm">
-                  <input type="checkbox" checked={form[key]} onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.checked }))} />
-                  {label}
+              {EMBED_TOGGLES.map(([key, label, hint]) => (
+                <label
+                  key={key}
+                  className="grid grid-cols-[auto_1fr] items-start gap-2 rounded-md border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2.5"
+                >
+                  <input
+                    className="mt-0.5"
+                    type="checkbox"
+                    checked={form[key]}
+                    onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.checked }))}
+                  />
+                  <span>
+                    <span className="row-title text-sm">{label}</span>
+                    <span className="row-meta block">{hint}</span>
+                  </span>
                 </label>
               ))}
             </div>
 
-            <Button type="submit">Save Preset</Button>
+            <div className="action-bar">
+              <Button type="submit">Save Preset</Button>
+            </div>
           </form>
         </SectionCard>
 
-        <SectionCard title="Embed Preview">
+        <SectionCard title="Embed Preview" subtitle="Live preview and generated iframe code.">
           <div className="space-y-3">
             <iframe src={previewUrl} className="w-full rounded-lg border border-[var(--border)] bg-white" style={{ height: form.height }} />
+            <FormField label="Preview URL">
+              <TextInput readOnly value={previewUrl} />
+            </FormField>
             <FormField label="Iframe code">
               <TextArea readOnly value={iframeCode} rows={4} className="font-mono text-xs" />
             </FormField>
@@ -150,18 +182,39 @@ export default function EmbedPage() {
         ) : configs.length === 0 ? (
           <EmptyState title="No embed presets yet" description="Save a preset to quickly reuse embed configurations." />
         ) : (
-          <div className="space-y-2">
-            {configs.map((config) => (
-              <div key={config.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] p-3 text-sm">
-                <p className="row-title">{config.name}</p>
-                <p className="row-meta">{config.width} x {config.height} | mode: {config.default_mode.replaceAll('_', ' ')}</p>
-              </div>
-            ))}
-          </div>
+          <DataTable>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Dimensions</th>
+                <th>Default mode</th>
+                <th>Enabled controls</th>
+              </tr>
+            </thead>
+            <tbody>
+              {configs.map((config) => {
+                const enabledCount = [
+                  config.show_legend,
+                  config.show_search,
+                  config.show_sidebar,
+                  config.show_tour_panel,
+                  config.show_branding,
+                  config.show_cta,
+                ].filter(Boolean).length;
+
+                return (
+                  <tr key={config.id}>
+                    <td className="row-title">{config.name}</td>
+                    <td>{config.width} x {config.height}</td>
+                    <td className="row-meta">{config.default_mode.replaceAll('_', ' ')}</td>
+                    <td>{enabledCount} / 6 enabled</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </DataTable>
         )}
       </SectionCard>
-
-      {message ? <StatusMessage>{message}</StatusMessage> : null}
     </AppShell>
   );
 }

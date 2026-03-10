@@ -1,18 +1,19 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, ClipboardList, MapPinned, Milestone } from 'lucide-react';
+import { AlertCircle, ClipboardList, MapPinned, Milestone, RefreshCw } from 'lucide-react';
 import {
   AppShell,
   Badge,
   Button,
+  DataTable,
   EmptyState,
   PageHeader,
   SectionCard,
   StatusMessage,
 } from '@/components/ui/siena';
 import { FormField, TextInput } from '@/components/ui/form-controls';
-import { LoadingInline } from '@/components/ui/loading';
+import { LoadingRows } from '@/components/ui/loading';
 
 type QueueMap = { id: string; title: string; shell_status: string; publication_status: string };
 type QueuePoi = { id: string; map_id: string; title: string; status: string; stop_number: number | null };
@@ -89,7 +90,15 @@ export default function ReviewQueuePage() {
         eyebrow="Moderation"
         title="Review Queue"
         subtitle="Review submitted maps and POIs based on role scope and department ownership."
+        actions={
+          <Button variant="secondary" onClick={() => void load()}>
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </Button>
+        }
       />
+
+      {message ? <StatusMessage>{message}</StatusMessage> : null}
 
       <section className="grid gap-4 xl:grid-cols-[1.1fr_1.5fr]">
         <SectionCard title="Queue Filters" subtitle="Limit moderation results to a single department.">
@@ -102,7 +111,9 @@ export default function ReviewQueuePage() {
               />
             </FormField>
             <div className="action-bar">
-              <Button variant="secondary" onClick={() => setDepartmentId('')}>Clear Filter</Button>
+              <Button variant="secondary" onClick={() => setDepartmentId('')}>
+                Clear Filter
+              </Button>
             </div>
           </div>
         </SectionCard>
@@ -133,61 +144,102 @@ export default function ReviewQueuePage() {
         </SectionCard>
       </section>
 
-      {message ? <StatusMessage>{message}</StatusMessage> : null}
-      {loading ? <LoadingInline>Loading queue…</LoadingInline> : null}
-
       <div className="grid gap-4 lg:grid-cols-2">
         <SectionCard title="Map Reviews" subtitle={`${maps.length} item(s) awaiting action.`}>
-          <div className="space-y-3">
-            {!loading && maps.length === 0 ? (
-              <EmptyState title="No map reviews" description="Submitted and rejected map shells will appear here." />
-            ) : (
-              maps.map((item) => (
-                <article key={item.id} className="review-item">
-                  <p className="row-title">{item.title}</p>
-                  <div className="mt-2 toolbar">
-                    <Badge
-                      label={item.shell_status.replaceAll('_', ' ')}
-                      tone={item.shell_status === 'rejected' ? 'danger' : 'warning'}
-                    />
-                    <Badge
-                      label={item.publication_status}
-                      tone={item.publication_status === 'published' ? 'success' : 'neutral'}
-                    />
-                  </div>
-                  <div className="mt-3 action-bar">
-                    <Button variant="secondary" onClick={() => mapAction(item.id, 'approve')}>Approve</Button>
-                    <Button variant="danger" onClick={() => mapAction(item.id, 'reject')}>Reject</Button>
-                  </div>
-                </article>
-              ))
-            )}
-          </div>
+          {loading ? (
+            <LoadingRows rows={6} />
+          ) : maps.length === 0 ? (
+            <EmptyState title="No map reviews" description="Submitted and rejected map shells will appear here." />
+          ) : (
+            <DataTable>
+              <thead>
+                <tr>
+                  <th>Map</th>
+                  <th>Workflow</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {maps.map((item) => (
+                  <tr key={item.id}>
+                    <td>
+                      <p className="row-title">{item.title}</p>
+                      <p className="row-meta">Map shell review</p>
+                    </td>
+                    <td>
+                      <div className="toolbar">
+                        <Badge
+                          label={item.shell_status.replaceAll('_', ' ')}
+                          tone={item.shell_status === 'rejected' ? 'danger' : 'warning'}
+                        />
+                        <Badge
+                          label={item.publication_status}
+                          tone={item.publication_status === 'published' ? 'success' : 'neutral'}
+                        />
+                      </div>
+                    </td>
+                    <td>
+                      <div className="action-bar">
+                        <Button variant="secondary" onClick={() => mapAction(item.id, 'approve')}>
+                          Approve
+                        </Button>
+                        <Button variant="danger" onClick={() => mapAction(item.id, 'reject')}>
+                          Reject
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </DataTable>
+          )}
         </SectionCard>
 
         <SectionCard title="POI Reviews" subtitle={`${pois.length} item(s) awaiting action.`}>
-          <div className="space-y-3">
-            {!loading && pois.length === 0 ? (
-              <EmptyState title="No POI reviews" description="Submitted and rejected POIs will appear here." />
-            ) : (
-              pois.map((item) => (
-                <article key={item.id} className="review-item">
-                  <p className="row-title">
-                    {item.stop_number ? `${item.stop_number}. ` : ''}
-                    {item.title}
-                  </p>
-                  <p className="row-meta">Map {mapTitleById.get(item.map_id) ?? 'Associated map'}</p>
-                  <div className="mt-2 toolbar">
-                    <Badge label={item.status.replaceAll('_', ' ')} tone={item.status === 'rejected' ? 'danger' : 'warning'} />
-                  </div>
-                  <div className="mt-3 action-bar">
-                    <Button variant="secondary" onClick={() => poiAction(item.id, 'approve')}>Approve</Button>
-                    <Button variant="danger" onClick={() => poiAction(item.id, 'reject')}>Reject</Button>
-                  </div>
-                </article>
-              ))
-            )}
-          </div>
+          {loading ? (
+            <LoadingRows rows={6} />
+          ) : pois.length === 0 ? (
+            <EmptyState title="No POI reviews" description="Submitted and rejected POIs will appear here." />
+          ) : (
+            <DataTable>
+              <thead>
+                <tr>
+                  <th>POI</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pois.map((item) => (
+                  <tr key={item.id}>
+                    <td>
+                      <p className="row-title">
+                        {item.stop_number ? `${item.stop_number}. ` : ''}
+                        {item.title}
+                      </p>
+                      <p className="row-meta">Map: {mapTitleById.get(item.map_id) ?? 'Associated map'}</p>
+                    </td>
+                    <td>
+                      <Badge
+                        label={item.status.replaceAll('_', ' ')}
+                        tone={item.status === 'rejected' ? 'danger' : 'warning'}
+                      />
+                    </td>
+                    <td>
+                      <div className="action-bar">
+                        <Button variant="secondary" onClick={() => poiAction(item.id, 'approve')}>
+                          Approve
+                        </Button>
+                        <Button variant="danger" onClick={() => poiAction(item.id, 'reject')}>
+                          Reject
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </DataTable>
+          )}
         </SectionCard>
       </div>
     </AppShell>
