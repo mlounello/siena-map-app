@@ -34,11 +34,27 @@ type MapDetail = {
   publication_status: string;
 };
 
+type PublishBlocker = {
+  poi_id: string;
+  title: string;
+  stop_number: number;
+  reason: string;
+};
+
+type PublishBlockSummary = {
+  totalStops: number;
+  anchoredStops: number;
+  unanchoredStops: number;
+  blockerCount: number;
+};
+
 export default function MapDetailPage() {
   const params = useParams<{ id: string }>();
   const mapId = params.id;
   const [map, setMap] = useState<MapDetail | null>(null);
   const [message, setMessage] = useState('');
+  const [publishBlockers, setPublishBlockers] = useState<PublishBlocker[]>([]);
+  const [publishBlockSummary, setPublishBlockSummary] = useState<PublishBlockSummary | null>(null);
 
   async function load(id: string) {
     const res = await fetch(`/api/maps/${id}`, { cache: 'no-store' });
@@ -81,6 +97,9 @@ export default function MapDetailPage() {
 
   async function runAction(action: 'submit' | 'approve' | 'reject' | 'publish' | 'archive') {
     if (!map) return;
+    setPublishBlockers([]);
+    setPublishBlockSummary(null);
+
     const endpoint = action === 'archive' ? 'publish' : action;
     const body = action === 'publish' ? { status: 'published' } : action === 'archive' ? { status: 'archived' } : {};
 
@@ -91,7 +110,13 @@ export default function MapDetailPage() {
     });
 
     const json = await res.json();
-    if (!res.ok) return setMessage(json.error ?? `Failed to ${action}`);
+    if (!res.ok) {
+      if (action === 'publish' && json.code === 'anchor_publish_validation_failed') {
+        setPublishBlockers(Array.isArray(json.blockers) ? json.blockers : []);
+        setPublishBlockSummary(json.summary ?? null);
+      }
+      return setMessage(json.error ?? `Failed to ${action}`);
+    }
 
     setMessage(`Map ${action} complete.`);
     await load(map.id);
@@ -285,6 +310,43 @@ export default function MapDetailPage() {
       </SectionCard>
 
       {message ? <StatusMessage>{message}</StatusMessage> : null}
+
+      {publishBlockers.length > 0 ? (
+        <SectionCard
+          title="Publish Blockers"
+          subtitle="Anchor coverage is required for publish where guided-route continuity cannot be maintained."
+          actions={
+            <ActionBar>
+              <Link href={`/dashboard/maps/${map.id}/routes`}>
+                <Button variant="secondary">Open Route Editor</Button>
+              </Link>
+              <Link href={`/dashboard/maps/${map.id}/pois`}>
+                <Button variant="secondary">Open POI Manager</Button>
+              </Link>
+            </ActionBar>
+          }
+        >
+          {publishBlockSummary ? (
+            <p className="row-meta">
+              Stops: {publishBlockSummary.totalStops} | Anchored: {publishBlockSummary.anchoredStops} | Unanchored:{' '}
+              {publishBlockSummary.unanchoredStops} | Blocking: {publishBlockSummary.blockerCount}
+            </p>
+          ) : null}
+          <div className="mt-3 space-y-2">
+            {publishBlockers.map((blocker) => (
+              <div
+                key={`${blocker.poi_id}-${blocker.stop_number}`}
+                className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2"
+              >
+                <p className="row-title">
+                  Stop {blocker.stop_number}: {blocker.title}
+                </p>
+                <p className="row-meta">{blocker.reason}</p>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      ) : null}
     </AppShell>
   );
 }
