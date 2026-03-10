@@ -298,6 +298,8 @@ export default function PoisPage() {
               categories={categories}
               draftLat={Number(form.latitude)}
               draftLng={Number(form.longitude)}
+              draftAnchorLat={Number(form.route_anchor_lat)}
+              draftAnchorLng={Number(form.route_anchor_lng)}
               onPick={(lat, lng) => setForm((prev) => ({ ...prev, latitude: lat.toFixed(6), longitude: lng.toFixed(6) }))}
               onPickAnchor={(lat, lng) => {
                 setForm((prev) => ({ ...prev, route_anchor_lat: lat.toFixed(6), route_anchor_lng: lng.toFixed(6) }));

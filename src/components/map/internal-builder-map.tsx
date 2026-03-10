@@ -71,6 +71,8 @@ export function InternalBuilderMap({
   categories,
   draftLat,
   draftLng,
+  draftAnchorLat,
+  draftAnchorLng,
   onPick,
   onPickAnchor,
   onMovePoi,
@@ -85,6 +87,8 @@ export function InternalBuilderMap({
   categories: CategoryRef[];
   draftLat: number;
   draftLng: number;
+  draftAnchorLat: number;
+  draftAnchorLng: number;
   onPick: (lat: number, lng: number) => void;
   onPickAnchor: (lat: number, lng: number) => void;
   onMovePoi: (poiId: string, lat: number, lng: number) => void;
@@ -303,6 +307,19 @@ export function InternalBuilderMap({
                 }}
               />
             ))}
+
+          {Number.isFinite(draftAnchorLat) && Number.isFinite(draftAnchorLng) ? (
+            <CircleMarker
+              center={[draftAnchorLat, draftAnchorLng]}
+              radius={5}
+              pathOptions={{
+                color: '#006b54',
+                weight: 2,
+                fillColor: '#ffffff',
+                fillOpacity: 0.95,
+              }}
+            />
+          ) : null}
 
           {leafletModule && Number.isFinite(draftLat) && Number.isFinite(draftLng) ? (
             <Marker position={[draftLat, draftLng]} icon={getDraftIcon()} />
