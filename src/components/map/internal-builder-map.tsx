@@ -28,6 +28,7 @@ type RouteConnectionRef = {
   id: string;
   from_poi_id: string;
   to_poi_id: string;
+  order_index?: number | null;
   line_color: string | null;
   line_thickness: number | null;
   connection_type?: 'outdoor_routed' | 'internal_transfer' | null;
@@ -40,7 +41,14 @@ type RouteSegment = {
   positions: [number, number][];
   color: string;
   weight: number;
+  fromPoiId: string;
+  toPoiId: string;
+  orderIndex: number;
 };
+
+type SegmentDiagnostics = NonNullable<
+  Awaited<ReturnType<typeof fetchRoutedSegments>>['results'][number]['diagnostics']
+>;
 
 function MapClickCapture({
   onPick,
@@ -97,6 +105,9 @@ export function InternalBuilderMap({
   const [leafletModule, setLeafletModule] = useState<typeof import('leaflet') | null>(null);
   const [showGuideLine, setShowGuideLine] = useState(true);
   const [snappedSegments, setSnappedSegments] = useState<Record<string, [number, number][]>>({});
+  const [segmentDiagnostics, setSegmentDiagnostics] = useState<Record<string, SegmentDiagnostics>>({});
+  const [showOnlyFlagged, setShowOnlyFlagged] = useState(true);
+  const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
   const markerIconCache = useRef<Map<string, any>>(new Map());
 
   useEffect(() => {
@@ -124,6 +135,7 @@ export function InternalBuilderMap({
       ])
     );
   }, [pois]);
+  const poiNameById = useMemo(() => new Map(pois.map((poi) => [poi.id, poi.title])), [pois]);
 
   const routeSegments = useMemo(() => {
     return routeConnections
@@ -137,6 +149,9 @@ export function InternalBuilderMap({
           positions: [from, to] as [number, number][],
           color: route.line_color || '#006b54',
           weight: route.line_thickness || 4,
+          fromPoiId: route.from_poi_id,
+          toPoiId: route.to_poi_id,
+          orderIndex: route.order_index ?? 0,
         } as RouteSegment;
       })
       .filter((segment): segment is RouteSegment => !!segment);
@@ -184,6 +199,7 @@ export function InternalBuilderMap({
   useEffect(() => {
     if (!showGuideLine || routeSegments.length === 0) {
       setSnappedSegments({});
+      setSegmentDiagnostics({});
       return;
     }
 
@@ -205,12 +221,20 @@ export function InternalBuilderMap({
         });
 
         const next: Record<string, [number, number][]> = {};
+        const diagnosticsById: Record<string, SegmentDiagnostics> = {};
         for (const result of payload.results) {
           next[result.id] = lineStringToLatLngPairs(result.geometry.coordinates);
+          if (result.diagnostics) diagnosticsById[result.id] = result.diagnostics;
         }
-        if (!controller.signal.aborted) setSnappedSegments(next);
+        if (!controller.signal.aborted) {
+          setSnappedSegments(next);
+          setSegmentDiagnostics(diagnosticsById);
+        }
       } catch {
-        if (!controller.signal.aborted) setSnappedSegments({});
+        if (!controller.signal.aborted) {
+          setSnappedSegments({});
+          setSegmentDiagnostics({});
+        }
       }
     }
 
@@ -218,6 +242,38 @@ export function InternalBuilderMap({
 
     return () => controller.abort();
   }, [showGuideLine, routeSegments, routeMode, mapId]);
+
+  const qaRows = useMemo(() => {
+    return routeSegments
+      .map((segment) => {
+        const diagnostics = segmentDiagnostics[segment.id] ?? null;
+        const fromLabel = poiNameById.get(segment.fromPoiId) ?? 'Unknown POI';
+        const toLabel = poiNameById.get(segment.toPoiId) ?? 'Unknown POI';
+        return {
+          id: segment.id,
+          fromLabel,
+          toLabel,
+          orderIndex: segment.orderIndex,
+          diagnostics,
+        };
+      })
+      .sort((a, b) => a.orderIndex - b.orderIndex);
+  }, [routeSegments, segmentDiagnostics, poiNameById]);
+
+  const visibleQaRows = useMemo(() => {
+    if (!showOnlyFlagged) return qaRows;
+    return qaRows.filter((row) => row.diagnostics?.flagged);
+  }, [qaRows, showOnlyFlagged]);
+
+  function fmtMeters(value: number | null | undefined) {
+    if (value == null || !Number.isFinite(value)) return 'n/a';
+    return `${Math.round(value)}m`;
+  }
+
+  function fmtRatio(value: number | null | undefined) {
+    if (value == null || !Number.isFinite(value)) return 'n/a';
+    return value.toFixed(2);
+  }
 
   return (
     <div className="overflow-hidden rounded-xl border border-black/10 bg-white">
@@ -248,6 +304,83 @@ export function InternalBuilderMap({
           <span className="text-xs text-black/65">{tilePreset.label}</span>
         </div>
       </div>
+      <div className="border-b border-black/10 bg-[var(--surface-subtle)]/60 px-4 py-3">
+        <div className="mb-2 flex items-center justify-between">
+          <p className="text-xs font-semibold uppercase tracking-[0.06em] text-black/65">
+            Routing QA
+          </p>
+          <button
+            type="button"
+            className={`rounded-md border px-2.5 py-1 text-xs font-semibold ${
+              showOnlyFlagged
+                ? 'border-amber-700 bg-amber-100 text-amber-900'
+                : 'border-black/15 bg-white text-black/70'
+            }`}
+            onClick={() => setShowOnlyFlagged((current) => !current)}
+          >
+            {showOnlyFlagged ? 'Showing flagged only' : 'Showing all segments'}
+          </button>
+        </div>
+
+        {routeSegments.length === 0 ? (
+          <p className="text-xs text-black/60">No outdoor route segments generated yet.</p>
+        ) : visibleQaRows.length === 0 ? (
+          <p className="text-xs text-black/60">No flagged segments for current routed geometry.</p>
+        ) : (
+          <div className="max-h-48 space-y-2 overflow-y-auto pr-1">
+            {visibleQaRows.map((row) => {
+              const diagnostics = row.diagnostics;
+              const flagged = Boolean(diagnostics?.flagged);
+              const reasons = diagnostics?.flag_reasons ?? [];
+              return (
+                <article
+                  key={row.id}
+                  onClick={() => setSelectedSegmentId((current) => (current === row.id ? null : row.id))}
+                  className={`rounded-md border px-3 py-2 text-xs ${
+                    selectedSegmentId === row.id
+                      ? 'border-[var(--brand)] bg-[var(--surface-muted)]'
+                      : flagged
+                        ? 'border-amber-400 bg-amber-50'
+                        : 'border-black/10 bg-white'
+                  }`}
+                >
+                  <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-semibold text-black/80">
+                      {row.orderIndex > 0 ? `${row.orderIndex}. ` : ''}{row.fromLabel} {'->'} {row.toLabel}
+                    </p>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                        flagged ? 'bg-amber-200 text-amber-900' : 'bg-emerald-100 text-emerald-900'
+                      }`}
+                    >
+                      {flagged ? 'Flagged' : 'OK'}
+                    </span>
+                  </div>
+
+                  {reasons.length > 0 ? (
+                    <p className="mb-1 text-amber-900">
+                      Reasons: {reasons.join(', ')}
+                    </p>
+                  ) : null}
+
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-black/70 md:grid-cols-3">
+                    <span>Source: {diagnostics?.geometry_source ?? 'n/a'}</span>
+                    <span>Direct: {fmtMeters(diagnostics?.direct_distance_meters)}</span>
+                    <span>Route: {fmtMeters(diagnostics?.route_distance_meters)}</span>
+                    <span>Detour: {fmtRatio(diagnostics?.detour_ratio)}</span>
+                    <span>Snap start: {fmtMeters(diagnostics?.snap_distance_meters_start)}</span>
+                    <span>Snap end: {fmtMeters(diagnostics?.snap_distance_meters_end)}</span>
+                  </div>
+
+                  {diagnostics?.fallback_reason ? (
+                    <p className="mt-1 text-red-700">Fallback: {diagnostics.fallback_reason}</p>
+                  ) : null}
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </div>
       <div className="h-[460px] w-full">
         <MapContainer center={center} zoom={zoom} className="h-full w-full" scrollWheelZoom>
           {tilePreset.layers.map((layer, index) => (
@@ -266,7 +399,11 @@ export function InternalBuilderMap({
                 <Polyline
                   key={`guide-segment-${segment.id}`}
                   positions={snappedSegments[segment.id] ?? segment.positions}
-                  pathOptions={{ color: segment.color, weight: segment.weight, opacity: 0.78 }}
+                  pathOptions={{
+                    color: segment.color,
+                    weight: selectedSegmentId === segment.id ? Math.max(segment.weight + 2, 5) : segment.weight,
+                    opacity: selectedSegmentId === segment.id ? 1 : 0.78,
+                  }}
                 />
               ))
             : null}
