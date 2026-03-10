@@ -5,6 +5,7 @@ import { CircleMarker, MapContainer, Marker, Popup, Polyline, TileLayer, useMap 
 import type { LatLngExpression } from 'leaflet';
 import { getPinColor, getPinSymbol } from '@/lib/map/pins';
 import { resolveTilePreset } from '@/lib/map/base-layers';
+import { fetchRoutedSegments, lineStringToLatLngPairs } from '@/lib/map/routing-client';
 
 type Poi = {
   id: string;
@@ -58,6 +59,7 @@ function FlyToStop({ target }: { target: LatLngExpression | null }) {
 
 export function PublicLeafletMap({
   displayMode,
+  routeMode = 'walking',
   center,
   zoom,
   themePreset,
@@ -65,6 +67,7 @@ export function PublicLeafletMap({
   routeConnections,
 }: {
   displayMode: 'explore_only' | 'guided_only' | 'both';
+  routeMode?: 'walking' | 'driving';
   center: { lat: number | string | null; lng: number | string | null };
   zoom: number;
   themePreset?: string | null;
@@ -199,43 +202,34 @@ export function PublicLeafletMap({
 
     const controller = new AbortController();
 
-    async function snapToRoads() {
+    async function routeSegments() {
       const next: Record<string, [number, number][]> = {};
 
-      await Promise.all(
-        explicitRoutes.map(async (route) => {
-          const from = route.positions[0];
-          const to = route.positions[1];
-          if (!from || !to) return;
+      try {
+        const payload = await fetchRoutedSegments({
+          mode: routeMode,
+          segments: explicitRoutes.map((route) => ({
+            id: route.id,
+            from: { lat: route.positions[0][0], lng: route.positions[0][1] },
+            to: { lat: route.positions[1][0], lng: route.positions[1][1] },
+          })),
+          signal: controller.signal,
+        });
 
-          const fromLng = from[1];
-          const fromLat = from[0];
-          const toLng = to[1];
-          const toLat = to[0];
-
-          const url = `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson`;
-
-          try {
-            const response = await fetch(url, { signal: controller.signal });
-            if (!response.ok) return;
-            const payload = await response.json();
-            const coords: Array<[number, number]> | undefined = payload?.routes?.[0]?.geometry?.coordinates;
-            if (!coords || coords.length < 2) return;
-
-            next[route.id] = coords.map((coord) => [coord[1], coord[0]]);
-          } catch {
-            // Keep straight-line fallback for this segment.
-          }
-        })
-      );
+        for (const result of payload.results) {
+          next[result.id] = lineStringToLatLngPairs(result.geometry.coordinates);
+        }
+      } catch {
+        // Straight-line fallback remains in render path.
+      }
 
       if (!controller.signal.aborted) setSnappedRoutes(next);
     }
 
-    void snapToRoads();
+    void routeSegments();
 
     return () => controller.abort();
-  }, [explicitRoutes, showGuidedLines]);
+  }, [explicitRoutes, showGuidedLines, routeMode]);
 
   useEffect(() => {
     if (uiMode === 'guided' && activeStop) {

@@ -29,6 +29,7 @@ type Department = { id: string; name: string };
 
 type MapRecord = {
   id: string;
+  route_mode: 'walking' | 'driving' | null;
   default_center_lat: number | string | null;
   default_center_lng: number | string | null;
   default_zoom: number;
@@ -191,6 +192,8 @@ export default function PoisPage() {
               center={builderCenter}
               zoom={mapRecord?.default_zoom ?? 16}
               themePreset={mapRecord?.theme_preset ?? 'MapStyle.STREETS'}
+              routeMode={mapRecord?.route_mode ?? 'walking'}
+              mapId={mapId}
               pois={pois}
               categories={categories}
               draftLat={Number(form.latitude)}

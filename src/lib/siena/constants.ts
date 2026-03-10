@@ -6,6 +6,7 @@ import type {
   PlatformRole,
   PoiStatus,
   PublicationStatus,
+  RouteMode,
 } from '../../types/siena-maps';
 
 export const APP_SCHEMA = process.env.NEXT_PUBLIC_APP_SCHEMA || 'app_siena_maps';
@@ -63,6 +64,7 @@ export const DEFAULT_MAP_SETTINGS = {
   map_type: 'geographic_osm' as MapType,
   visibility: 'internal_only' as MapVisibility,
   display_mode: 'both' as DisplayMode,
+  route_mode: 'walking' as RouteMode,
   default_center_lat: 42.7167,
   default_center_lng: -73.7519,
   default_zoom: 16,

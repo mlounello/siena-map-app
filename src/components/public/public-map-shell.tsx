@@ -43,6 +43,7 @@ type RouteConnection = {
 
 export function PublicMapShell({
   displayMode,
+  routeMode,
   center,
   zoom,
   themePreset,
@@ -50,6 +51,7 @@ export function PublicMapShell({
   routeConnections,
 }: {
   displayMode: 'explore_only' | 'guided_only' | 'both';
+  routeMode?: 'walking' | 'driving';
   center: { lat: number | string | null; lng: number | string | null };
   zoom: number;
   themePreset?: string | null;
@@ -59,6 +61,7 @@ export function PublicMapShell({
   return (
     <PublicLeafletMap
       displayMode={displayMode}
+      routeMode={routeMode ?? 'walking'}
       center={center}
       zoom={zoom}
       themePreset={themePreset}

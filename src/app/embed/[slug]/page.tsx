@@ -40,6 +40,7 @@ export default async function EmbedMapPage({
     <main className="p-0">
       <PublicMapShell
         displayMode={mode}
+        routeMode={map.route_mode ?? 'walking'}
         center={{ lat: map.default_center_lat, lng: map.default_center_lng }}
         zoom={map.default_zoom ?? 16}
         themePreset={map.theme_preset}

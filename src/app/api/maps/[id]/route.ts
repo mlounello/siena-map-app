@@ -11,6 +11,7 @@ const updateMapSchema = z.object({
   intro_text: z.string().max(1000).nullable().optional(),
   visibility: z.enum(['public', 'unlisted', 'internal_only']).optional(),
   display_mode: z.enum(['explore_only', 'guided_only', 'both']).optional(),
+  route_mode: z.enum(['walking', 'driving']).optional(),
   default_center_lat: z.number().min(-90).max(90).nullable().optional(),
   default_center_lng: z.number().min(-180).max(180).nullable().optional(),
   default_zoom: z.number().int().min(1).max(22).optional(),

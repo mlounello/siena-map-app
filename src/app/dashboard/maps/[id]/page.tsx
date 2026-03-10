@@ -24,6 +24,7 @@ type MapDetail = {
   intro_text: string | null;
   visibility: 'public' | 'unlisted' | 'internal_only';
   display_mode: 'explore_only' | 'guided_only' | 'both';
+  route_mode: 'walking' | 'driving';
   default_center_lat: number | null;
   default_center_lng: number | null;
   default_zoom: number;
@@ -62,6 +63,7 @@ export default function MapDetailPage() {
         intro_text: map.intro_text,
         visibility: map.visibility,
         display_mode: map.display_mode,
+        route_mode: map.route_mode,
         default_center_lat: map.default_center_lat,
         default_center_lng: map.default_center_lng,
         default_zoom: map.default_zoom,
@@ -214,7 +216,7 @@ export default function MapDetailPage() {
             />
           </FormField>
 
-          <div className="form-row md:grid-cols-2">
+          <div className="form-row md:grid-cols-3">
             <FormField label="Visibility">
               <SelectInput
                 value={map.visibility}
@@ -233,6 +235,15 @@ export default function MapDetailPage() {
                 <option value="both">Both</option>
                 <option value="explore_only">Explore only</option>
                 <option value="guided_only">Guided only</option>
+              </SelectInput>
+            </FormField>
+            <FormField label="Route mode">
+              <SelectInput
+                value={map.route_mode ?? 'walking'}
+                onChange={(e) => setMap((p) => (p ? { ...p, route_mode: e.target.value as MapDetail['route_mode'] } : p))}
+              >
+                <option value="walking">Walking</option>
+                <option value="driving">Driving</option>
               </SelectInput>
             </FormField>
           </div>

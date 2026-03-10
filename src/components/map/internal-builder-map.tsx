@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { MapContainer, Marker, Polyline, TileLayer, useMapEvents } from 'react-leaflet';
 import { getPinColor, getPinSymbol } from '@/lib/map/pins';
 import { resolveTilePreset } from '@/lib/map/base-layers';
+import { fetchRoutedSegments, lineStringToLatLngPairs } from '@/lib/map/routing-client';
 
 type Poi = {
   id: string;
@@ -31,9 +32,11 @@ function MapClickCapture({ onPick }: { onPick: (lat: number, lng: number) => voi
 }
 
 export function InternalBuilderMap({
+  mapId,
   center,
   zoom,
   themePreset,
+  routeMode = 'walking',
   pois,
   categories,
   draftLat,
@@ -41,9 +44,11 @@ export function InternalBuilderMap({
   onPick,
   onMovePoi,
 }: {
+  mapId?: string;
   center: [number, number];
   zoom: number;
   themePreset?: string | null;
+  routeMode?: 'walking' | 'driving';
   pois: Poi[];
   categories: CategoryRef[];
   draftLat: number;
@@ -137,34 +142,34 @@ export function InternalBuilderMap({
     const controller = new AbortController();
 
     async function fetchSnappedSegments() {
-      const next: Array<[number, number][]> = await Promise.all(
-        straightSegments.map(async (segment) => {
-          const from = segment[0];
-          const to = segment[1];
-          if (!from || !to) return segment;
+      const segments = straightSegments.map((segment, index) => ({
+        id: `builder-segment-${index}`,
+        from: { lat: segment[0][0], lng: segment[0][1] },
+        to: { lat: segment[1][0], lng: segment[1][1] },
+      }));
 
-          const url = `https://router.project-osrm.org/route/v1/driving/${from[1]},${from[0]};${to[1]},${to[0]}?overview=full&geometries=geojson`;
+      try {
+        const payload = await fetchRoutedSegments({
+          mapId,
+          mode: routeMode,
+          segments,
+          signal: controller.signal,
+        });
 
-          try {
-            const response = await fetch(url, { signal: controller.signal });
-            if (!response.ok) return segment;
-            const payload = await response.json();
-            const coordinates: Array<[number, number]> | undefined = payload?.routes?.[0]?.geometry?.coordinates;
-            if (!coordinates || coordinates.length < 2) return segment;
-            return coordinates.map((coord) => [coord[1], coord[0]]);
-          } catch {
-            return segment;
-          }
-        })
-      );
+        const next = payload.results
+          .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }))
+          .map((result) => lineStringToLatLngPairs(result.geometry.coordinates));
 
-      if (!controller.signal.aborted) setSnappedSegments(next);
+        if (!controller.signal.aborted) setSnappedSegments(next);
+      } catch {
+        if (!controller.signal.aborted) setSnappedSegments(straightSegments);
+      }
     }
 
     void fetchSnappedSegments();
 
     return () => controller.abort();
-  }, [showGuideLine, straightSegments]);
+  }, [showGuideLine, straightSegments, routeMode, mapId]);
 
   return (
     <div className="overflow-hidden rounded-xl border border-black/10 bg-white">

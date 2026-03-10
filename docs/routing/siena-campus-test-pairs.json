@@ -1,0 +1,108 @@
+{
+  "campus": "Siena College",
+  "version": "2026-03-10",
+  "notes": "Seed test pairs for routing QA. Update coordinates to your exact campus reference points as needed.",
+  "pairs": [
+    {
+      "id": "P01",
+      "label": "Main Gate to Foy Hall",
+      "priority": "high",
+      "fromName": "Main Gate",
+      "toName": "Foy Hall",
+      "from": { "lat": 42.718667, "lng": -73.752763 },
+      "to": { "lat": 42.719474, "lng": -73.750565 },
+      "expectedPathNotes": "Should prefer main campus pedestrian connectors, not long road detours."
+    },
+    {
+      "id": "P02",
+      "label": "Library to Dining Hall",
+      "priority": "high",
+      "fromName": "Standish Library",
+      "toName": "Sarra Dining",
+      "from": { "lat": 42.717986, "lng": -73.750533 },
+      "to": { "lat": 42.718479, "lng": -73.749574 },
+      "expectedPathNotes": "Should follow direct pedestrian pathways between academic core and dining."
+    },
+    {
+      "id": "P03",
+      "label": "Academic Quad to Residence Cluster",
+      "priority": "high",
+      "fromName": "Academic Quad",
+      "toName": "Residence Cluster",
+      "from": { "lat": 42.718161, "lng": -73.751214 },
+      "to": { "lat": 42.716952, "lng": -73.748936 },
+      "expectedPathNotes": "Should use walkways and stairs where available."
+    },
+    {
+      "id": "P04",
+      "label": "Parking Lot to Chapel",
+      "priority": "medium",
+      "fromName": "Lot A",
+      "toName": "Chapel",
+      "from": { "lat": 42.719532, "lng": -73.753132 },
+      "to": { "lat": 42.718692, "lng": -73.751065 },
+      "expectedPathNotes": "Should include pedestrian cut-through connectors near lot edge."
+    },
+    {
+      "id": "P05",
+      "label": "Athletics to Student Center",
+      "priority": "medium",
+      "fromName": "Athletics Complex",
+      "toName": "Student Center",
+      "from": { "lat": 42.716302, "lng": -73.747952 },
+      "to": { "lat": 42.717641, "lng": -73.750041 },
+      "expectedPathNotes": "Should avoid vehicle-only loops if walkways exist."
+    },
+    {
+      "id": "P06",
+      "label": "Residence North to Library",
+      "priority": "high",
+      "fromName": "Residence North",
+      "toName": "Standish Library",
+      "from": { "lat": 42.719972, "lng": -73.749281 },
+      "to": { "lat": 42.717986, "lng": -73.750533 },
+      "expectedPathNotes": "Should follow pedestrian spine and crossings."
+    },
+    {
+      "id": "P07",
+      "label": "South Walkway Connector",
+      "priority": "high",
+      "fromName": "South Path Entry",
+      "toName": "South Path Exit",
+      "from": { "lat": 42.716811, "lng": -73.751842 },
+      "to": { "lat": 42.717123, "lng": -73.749911 },
+      "expectedPathNotes": "Critical to validate if internal pathway geometry is present in OSM."
+    },
+    {
+      "id": "P08",
+      "label": "Stairs Connector Check",
+      "priority": "medium",
+      "fromName": "Upper Terrace",
+      "toName": "Lower Terrace",
+      "from": { "lat": 42.718287, "lng": -73.749741 },
+      "to": { "lat": 42.717872, "lng": -73.749231 },
+      "expectedPathNotes": "Should use steps where legally walkable."
+    },
+    {
+      "id": "P09",
+      "label": "Peripheral Walkway vs Road",
+      "priority": "medium",
+      "fromName": "East Perimeter",
+      "toName": "North Perimeter",
+      "from": { "lat": 42.716744, "lng": -73.747993 },
+      "to": { "lat": 42.719283, "lng": -73.749088 },
+      "expectedPathNotes": "Should prioritize mapped walkway if available."
+    },
+    {
+      "id": "P10",
+      "label": "Cross-Core Shortcut",
+      "priority": "high",
+      "fromName": "Core West",
+      "toName": "Core East",
+      "from": { "lat": 42.718314, "lng": -73.751694 },
+      "to": { "lat": 42.718232, "lng": -73.749892 },
+      "expectedPathNotes": "Should reveal whether campus shortcut connectors are correctly mapped."
+    }
+  ]
+}
+

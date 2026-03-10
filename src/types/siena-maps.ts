@@ -29,6 +29,7 @@ export type PoiStatus =
   | 'archived';
 
 export type DisplayMode = 'explore_only' | 'guided_only' | 'both';
+export type RouteMode = 'walking' | 'driving';
 
 export interface Profile {
   id: string;
@@ -75,6 +76,7 @@ export interface MapRecord {
   shell_status: MapShellStatus;
   publication_status: PublicationStatus;
   display_mode: DisplayMode;
+  route_mode: RouteMode;
   default_center_lat: number | null;
   default_center_lng: number | null;
   default_zoom: number;

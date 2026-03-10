@@ -11,6 +11,7 @@ const createMapSchema = z.object({
   primary_department_id: z.string().uuid(),
   visibility: z.enum(['public', 'unlisted', 'internal_only']).default('internal_only'),
   display_mode: z.enum(['explore_only', 'guided_only', 'both']).default('both'),
+  route_mode: z.enum(['walking', 'driving']).default('walking'),
   default_center_lat: z.number().min(-90).max(90).nullable().optional(),
   default_center_lng: z.number().min(-180).max(180).nullable().optional(),
   default_zoom: z.number().int().min(1).max(22).default(16),

@@ -61,6 +61,7 @@ export default function MapsPage() {
     primary_department_id: '',
     visibility: 'internal_only',
     display_mode: 'both',
+    route_mode: 'walking',
     default_center_lat: '42.7167',
     default_center_lng: '-73.7519',
     default_zoom: '16',
@@ -119,6 +120,7 @@ export default function MapsPage() {
       primary_department_id: '',
       visibility: 'internal_only',
       display_mode: 'both',
+      route_mode: 'walking',
       default_center_lat: '42.7167',
       default_center_lng: '-73.7519',
       default_zoom: '16',
@@ -163,7 +165,7 @@ export default function MapsPage() {
                 required
               />
             </FormField>
-            <div className="form-row md:grid-cols-2">
+            <div className="form-row md:grid-cols-3">
               <FormField label="Primary department">
                 <SelectInput
                   value={createForm.primary_department_id}
@@ -186,6 +188,15 @@ export default function MapsPage() {
                   <option value="internal_only">Internal only</option>
                   <option value="unlisted">Unlisted</option>
                   <option value="public">Public</option>
+                </SelectInput>
+              </FormField>
+              <FormField label="Route mode">
+                <SelectInput
+                  value={createForm.route_mode}
+                  onChange={(e) => setCreateForm((p) => ({ ...p, route_mode: e.target.value }))}
+                >
+                  <option value="walking">Walking</option>
+                  <option value="driving">Driving</option>
                 </SelectInput>
               </FormField>
             </div>
