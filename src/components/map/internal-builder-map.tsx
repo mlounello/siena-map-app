@@ -42,10 +42,19 @@ type RouteSegment = {
   weight: number;
 };
 
-function MapClickCapture({ onPick }: { onPick: (lat: number, lng: number) => void }) {
+function MapClickCapture({
+  onPick,
+  onPickAnchor,
+}: {
+  onPick: (lat: number, lng: number) => void;
+  onPickAnchor: (lat: number, lng: number) => void;
+}) {
   useMapEvents({
     click(e) {
       onPick(e.latlng.lat, e.latlng.lng);
+    },
+    contextmenu(e) {
+      onPickAnchor(e.latlng.lat, e.latlng.lng);
     },
   });
   return null;
@@ -63,6 +72,7 @@ export function InternalBuilderMap({
   draftLat,
   draftLng,
   onPick,
+  onPickAnchor,
   onMovePoi,
 }: {
   mapId?: string;
@@ -76,6 +86,7 @@ export function InternalBuilderMap({
   draftLat: number;
   draftLng: number;
   onPick: (lat: number, lng: number) => void;
+  onPickAnchor: (lat: number, lng: number) => void;
   onMovePoi: (poiId: string, lat: number, lng: number) => void;
 }) {
   const LINE_VISIBILITY_STORAGE_KEY = 'siena_maps_builder_show_lines';
@@ -207,7 +218,7 @@ export function InternalBuilderMap({
   return (
     <div className="overflow-hidden rounded-xl border border-black/10 bg-white">
       <div className="flex items-center justify-between border-b border-black/10 px-4 py-3 text-sm">
-        <span>Builder canvas: click to set new POI coordinates, drag existing markers to update location.</span>
+        <span>Builder canvas: click sets POI coordinates, right-click sets door anchor, drag markers to move POIs.</span>
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -244,7 +255,7 @@ export function InternalBuilderMap({
               opacity={layer.opacity}
             />
           ))}
-          <MapClickCapture onPick={onPick} />
+          <MapClickCapture onPick={onPick} onPickAnchor={onPickAnchor} />
 
           {showGuideLine
             ? routeSegments.map((segment) => (

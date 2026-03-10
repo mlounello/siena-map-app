@@ -51,6 +51,8 @@ type RoutedLine = {
   positions: [number, number][];
   color: string;
   weight: number;
+  groupKey: string;
+  groupLabel: string;
 };
 
 function FlyToStop({ target }: { target: LatLngExpression | null }) {
@@ -123,6 +125,9 @@ export function PublicLeafletMap({
         .map((route) => {
           const fromPoi = normalizedPois.find((poi) => poi.id === route.from_poi_id);
           const toPoi = normalizedPois.find((poi) => poi.id === route.to_poi_id);
+          const fromCategory = Array.isArray(fromPoi?.categories) ? fromPoi?.categories[0] : fromPoi?.categories;
+          const groupKey = fromCategory?.id ?? 'uncategorized';
+          const groupLabel = fromCategory?.name ?? 'Uncategorized';
           const from = fromPoi
             ? [
                 Number.isFinite(Number(fromPoi.route_anchor_lat)) ? Number(fromPoi.route_anchor_lat) : fromPoi.latitude,
@@ -141,11 +146,32 @@ export function PublicLeafletMap({
             positions: [from, to] as [number, number][],
             color: route.line_color || '#006b54',
             weight: route.line_thickness || 4,
+            groupKey,
+            groupLabel,
           };
         })
         .filter((route): route is RoutedLine => !!route),
     [pointsById, routeConnections]
   );
+  const [selectedRouteGroup, setSelectedRouteGroup] = useState('all');
+
+  const routeGroups = useMemo(() => {
+    const groups = new Map<string, { key: string; label: string; count: number }>();
+    for (const route of explicitRoutes) {
+      const existing = groups.get(route.groupKey);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        groups.set(route.groupKey, { key: route.groupKey, label: route.groupLabel, count: 1 });
+      }
+    }
+    return Array.from(groups.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [explicitRoutes]);
+
+  const visibleRoutes = useMemo(() => {
+    if (selectedRouteGroup === 'all') return explicitRoutes;
+    return explicitRoutes.filter((route) => route.groupKey === selectedRouteGroup);
+  }, [explicitRoutes, selectedRouteGroup]);
 
   const internalTransfers = useMemo(
     () =>
@@ -232,7 +258,7 @@ export function PublicLeafletMap({
 
   useEffect(() => {
     if (!showGuidedLines) return;
-    if (explicitRoutes.length === 0) return;
+    if (visibleRoutes.length === 0) return;
 
     const controller = new AbortController();
 
@@ -242,7 +268,7 @@ export function PublicLeafletMap({
       try {
         const payload = await fetchRoutedSegments({
           mode: routeMode,
-          segments: explicitRoutes.map((route) => ({
+          segments: visibleRoutes.map((route) => ({
             id: route.id,
             from: { lat: route.positions[0][0], lng: route.positions[0][1] },
             to: { lat: route.positions[1][0], lng: route.positions[1][1] },
@@ -263,7 +289,7 @@ export function PublicLeafletMap({
     void routeSegments();
 
     return () => controller.abort();
-  }, [explicitRoutes, showGuidedLines, routeMode]);
+  }, [visibleRoutes, showGuidedLines, routeMode]);
 
   return (
     <section className="grid gap-4 lg:grid-cols-[2fr_1fr]">
@@ -283,6 +309,20 @@ export function PublicLeafletMap({
             >
               {showRoutes ? 'Hide Route' : 'Show Route'}
             </button>
+            {showRoutes && routeGroups.length > 1 ? (
+              <select
+                className="rounded-md border border-black/15 bg-white px-2.5 py-1 text-xs"
+                value={selectedRouteGroup}
+                onChange={(e) => setSelectedRouteGroup(e.target.value)}
+              >
+                <option value="all">All route segments</option>
+                {routeGroups.map((group) => (
+                  <option key={group.key} value={group.key}>
+                    {group.label} ({group.count})
+                  </option>
+                ))}
+              </select>
+            ) : null}
           </div>
         </div>
 
@@ -298,8 +338,8 @@ export function PublicLeafletMap({
               />
             ))}
 
-            {showGuidedLines && explicitRoutes.length > 0
-              ? explicitRoutes.map((route) => (
+            {showGuidedLines && visibleRoutes.length > 0
+              ? visibleRoutes.map((route) => (
                   <Polyline
                     key={route.id}
                     positions={snappedRoutes[route.id] ?? route.positions}
@@ -308,7 +348,7 @@ export function PublicLeafletMap({
                 ))
               : null}
 
-            {showGuidedLines && explicitRoutes.length === 0 && guidedLine.length > 1 ? (
+            {showGuidedLines && visibleRoutes.length === 0 && guidedLine.length > 1 ? (
               <Polyline positions={guidedLine} pathOptions={{ color: '#8b1f41', weight: 4, opacity: 0.85 }} />
             ) : null}
 
