@@ -1,7 +1,9 @@
 {
   "campus": "Siena College",
-  "version": "2026-03-10",
-  "notes": "Seed test pairs for routing QA. Update coordinates to your exact campus reference points as needed.",
+  "version": "2026-03-11",
+  "defaultMode": "walking",
+  "notes": "Seed test pairs for routing QA. Keep `pairs` for backward compatibility. Use `cases` when you want per-case metadata such as mode/tags.",
+  "cases": [],
   "pairs": [
     {
       "id": "P01",
@@ -105,4 +107,3 @@
     }
   ]
 }
-

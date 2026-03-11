@@ -178,3 +178,6 @@
 - [ ] Embed preview renders correctly in builder.
 - [ ] Public map route toggle and route selection behave correctly.
 - [ ] No client exceptions on POI/route/public map pages.
+
+Reference checklist:
+- `docs/qa/guided-route-regression-checklist.md` (guided route + anchors + internal-transfer validation workflow)

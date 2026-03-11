@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "routing:audit": "node scripts/run-campus-routing-audit.mjs"
+    "routing:audit": "node scripts/run-campus-routing-audit.mjs",
+    "routing:regression": "node scripts/run-routing-regression.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
