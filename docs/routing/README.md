@@ -55,3 +55,6 @@ Use the same fixture IDs and compare prior vs new `.latest` outputs (or timestam
 
 For full guided-route behavior validation (anchors, internal transfers, publish checks, public/embed controls), use:
 - `docs/qa/guided-route-regression-checklist.md`
+
+For case-by-case route-quality review and watchlist triage notes, use:
+- `docs/routing/siena-routing-triage-notes.md`
