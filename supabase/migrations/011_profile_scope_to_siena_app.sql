@@ -53,7 +53,7 @@ WHERE
     )
     OR EXISTS (
       SELECT 1
-      FROM app_siena_maps.audit_log al
+      FROM app_siena_maps.audit_logs al
       WHERE al.actor_id = p.id
     )
   );
@@ -61,4 +61,3 @@ WHERE
 -- Siena profiles should be created when someone actually signs into Siena Maps,
 -- not when they sign into any other app sharing the same Supabase project.
 DROP TRIGGER IF EXISTS on_auth_user_created_siena_maps ON auth.users;
-
