@@ -5,7 +5,7 @@ import { listSienaAppUsers } from '@/lib/users/app-users';
 type DbClient = Awaited<ReturnType<typeof import('@/lib/supabase/server').createDbClient>>['db'];
 
 const CONTROL_ROOM_SYNC_URL =
-  env.CONTROL_ROOM_APP_USER_SYNC_URL || 'https://mlounello.com/api/admin/sync/app-users';
+  env.CONTROL_ROOM_APP_USERS_SYNC_URL || 'https://mlounello.com/api/admin/sync/app-users';
 
 type SyncTrigger = 'manual_admin' | 'auth_callback' | 'role_change';
 
@@ -38,6 +38,10 @@ type SyncResult =
     };
 
 function summarizeRemoteBody(body: unknown): string | undefined {
+  if (typeof body === 'string') {
+    return body.slice(0, 180);
+  }
+
   if (!body || typeof body !== 'object') return undefined;
 
   const record = body as Record<string, unknown>;
@@ -55,10 +59,19 @@ function summarizeRemoteBody(body: unknown): string | undefined {
 }
 
 function bodySignalsFailure(body: unknown): boolean {
+  if (typeof body === 'string') {
+    return body.includes('Cloudflare Access') || body.includes('<!DOCTYPE html') || body.includes('<html');
+  }
+
   if (!body || typeof body !== 'object') return false;
 
   const record = body as Record<string, unknown>;
-  return record.ok === false || record.success === false || record.synced === false;
+  return (
+    record.ok === false ||
+    record.success === false ||
+    record.synced === false ||
+    typeof record.error === 'string'
+  );
 }
 
 function mapGlobalRole(role: PlatformRole): string {
@@ -93,6 +106,8 @@ export async function syncSienaAppUsersToControlRoom(
   trigger: SyncTrigger
 ): Promise<SyncResult> {
   const secret = env.APP_SYNC_SECRET;
+  const cfAccessClientId = env.CF_ACCESS_CLIENT_ID;
+  const cfAccessClientSecret = env.CF_ACCESS_CLIENT_SECRET;
   if (!secret) {
     console.warn(`[control-room-sync] skipped (${trigger}): missing APP_SYNC_SECRET`);
     return {
@@ -101,6 +116,17 @@ export async function syncSienaAppUsersToControlRoom(
       status: null,
       trigger,
       error: 'Missing APP_SYNC_SECRET',
+    };
+  }
+
+  if (!cfAccessClientId || !cfAccessClientSecret) {
+    console.warn(`[control-room-sync] skipped (${trigger}): missing Cloudflare Access service token env`);
+    return {
+      ok: false,
+      syncedCount: 0,
+      status: null,
+      trigger,
+      error: 'Missing CF_ACCESS_CLIENT_ID or CF_ACCESS_CLIENT_SECRET',
     };
   }
 
@@ -116,6 +142,8 @@ export async function syncSienaAppUsersToControlRoom(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'CF-Access-Client-Id': cfAccessClientId,
+        'CF-Access-Client-Secret': cfAccessClientSecret,
         'X-App-Sync-Secret': secret,
       },
       body: JSON.stringify(payload),
@@ -155,7 +183,10 @@ export async function syncSienaAppUsersToControlRoom(
     }
 
     if (bodySignalsFailure(parsedBody)) {
-      const error = `Control room sync returned a semantic failure despite HTTP ${response.status}`;
+      const error =
+        typeof parsedBody === 'string' && parsedBody.includes('Cloudflare Access')
+          ? 'Control room sync blocked by Cloudflare Access'
+          : `Control room sync returned a semantic failure despite HTTP ${response.status}`;
       console.error('[control-room-sync]', {
         trigger,
         status: response.status,

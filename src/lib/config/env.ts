@@ -8,7 +8,9 @@ const serverSchema = z.object({
   APP_SCHEMA: z.string().min(1).optional(),
   OWNER_EMAIL: z.string().email().optional(),
   APP_SYNC_SECRET: z.string().min(20).optional(),
-  CONTROL_ROOM_APP_USER_SYNC_URL: z.string().url().optional(),
+  CF_ACCESS_CLIENT_ID: z.string().min(10).optional(),
+  CF_ACCESS_CLIENT_SECRET: z.string().min(10).optional(),
+  CONTROL_ROOM_APP_USERS_SYNC_URL: z.string().url().optional(),
 });
 
 const parsed = serverSchema.safeParse(process.env);
