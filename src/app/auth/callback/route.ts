@@ -1,4 +1,5 @@
 import { createDbClient } from '@/lib/supabase/server';
+import { syncSienaAppUsersToControlRoom } from '@/lib/control-room/user-sync';
 import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
@@ -66,6 +67,8 @@ export async function GET(request: Request) {
     loginUrl.searchParams.set('message', profileError.message);
     return NextResponse.redirect(loginUrl);
   }
+
+  await syncSienaAppUsersToControlRoom(db, 'auth_callback');
 
   return NextResponse.redirect(new URL('/dashboard', request.url));
 }

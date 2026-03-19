@@ -1,7 +1,9 @@
 import { z } from 'zod';
 import { badRequest, forbidden, ok, serverError, unauthorized } from '@/lib/api/http';
 import { requireRole } from '@/lib/auth/roles';
+import { syncSienaAppUsersToControlRoom } from '@/lib/control-room/user-sync';
 import { createDbClient } from '@/lib/supabase/server';
+import { listSienaAppUsers } from '@/lib/users/app-users';
 
 const updateSchema = z.object({
   user_id: z.string().uuid(),
@@ -13,28 +15,16 @@ export async function GET() {
   if (!profile) return unauthorized();
 
   const { db } = await createDbClient();
-  const { data, error } = await db
-    .from('profiles')
-    .select('id, email, display_name, role, is_active, created_at, updated_at, has_signed_in_to_app')
-    .order('created_at', { ascending: false })
-    .limit(500);
-
-  if (error) return serverError(error.message);
-
-  const { data: memberships, error: membershipsError } = await db
-    .from('department_memberships')
-    .select('user_id');
-
-  if (membershipsError) return serverError(membershipsError.message);
-
-  const memberIds = new Set((memberships ?? []).map((membership) => membership.user_id));
-  const users = (data ?? []).filter(
-    (user) => user.has_signed_in_to_app || user.role !== 'viewer' || memberIds.has(user.id)
-  );
-
-  return ok({
-    users: users.map(({ has_signed_in_to_app: _hasSignedInToApp, ...user }) => user),
-  });
+  try {
+    const users = await listSienaAppUsers(db);
+    return ok({
+      users: users.map(
+        ({ has_signed_in_to_app: _hasSignedInToApp, last_app_sign_in_at: _lastAppSignInAt, ...user }) => user
+      ),
+    });
+  } catch (error) {
+    return serverError(error instanceof Error ? error.message : 'Failed to load users');
+  }
 }
 
 export async function PATCH(request: Request) {
@@ -71,5 +61,7 @@ export async function PATCH(request: Request) {
     .single();
 
   if (error) return serverError(error.message);
-  return ok({ user: data });
+
+  const sync = await syncSienaAppUsersToControlRoom(db, 'role_change');
+  return ok({ user: data, sync });
 }

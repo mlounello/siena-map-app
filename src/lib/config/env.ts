@@ -7,6 +7,8 @@ const serverSchema = z.object({
   NEXT_PUBLIC_APP_SCHEMA: z.string().min(1).default('app_siena_maps'),
   APP_SCHEMA: z.string().min(1).optional(),
   OWNER_EMAIL: z.string().email().optional(),
+  APP_SYNC_SECRET: z.string().min(20).optional(),
+  CONTROL_ROOM_APP_USER_SYNC_URL: z.string().url().optional(),
 });
 
 const parsed = serverSchema.safeParse(process.env);

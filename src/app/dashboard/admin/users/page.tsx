@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { AppShell, Badge, DataTable, EmptyState, PageHeader, SectionCard, StatusMessage } from '@/components/ui/siena';
+import { AppShell, Badge, Button, DataTable, EmptyState, PageHeader, SectionCard, StatusMessage } from '@/components/ui/siena';
 import { FormField, SelectInput } from '@/components/ui/form-controls';
 import { LoadingRows } from '@/components/ui/loading';
 
@@ -24,6 +24,7 @@ export default function UsersAdminPage() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -76,12 +77,43 @@ export default function UsersAdminPage() {
     if (!res.ok) return setMessage(json.error ?? 'Failed to update role');
 
     await load();
-    setMessage('Role updated.');
+    setMessage(
+      json.sync?.ok === false
+        ? `Role updated. Control room sync warning: ${json.sync.error ?? 'Sync failed.'}`
+        : 'Role updated and synced.'
+    );
+  }
+
+  async function syncUsers() {
+    setSyncing(true);
+    const res = await fetch('/api/admin/sync-users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const json = await res.json().catch(() => null);
+    setSyncing(false);
+
+    if (!res.ok) {
+      setMessage(json?.error ?? 'Failed to sync Siena Maps users to control room');
+      return;
+    }
+
+    setMessage(`Synced ${json.syncedCount ?? 0} Siena Maps users to control room.`);
   }
 
   return (
     <AppShell>
-      <PageHeader eyebrow="Administration" title="Users & Roles" subtitle="Assign access for Siena Maps accounts that have actually signed into or been provisioned for this app." />
+      <PageHeader
+        eyebrow="Administration"
+        title="Users & Roles"
+        subtitle="Assign access for Siena Maps accounts that have actually signed into or been provisioned for this app."
+        actions={
+          <Button variant="secondary" onClick={() => void syncUsers()} disabled={syncing}>
+            {syncing ? 'Syncing...' : 'Sync To Control Room'}
+          </Button>
+        }
+      />
       {message ? <StatusMessage>{message}</StatusMessage> : null}
 
       <SectionCard title="Role Snapshot" subtitle="Current role distribution across Siena Maps accounts.">
