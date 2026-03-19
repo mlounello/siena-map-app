@@ -124,12 +124,15 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   const allowed = await canManageDepartmentMembers(db, profile.id, profile.role, id);
   if (!allowed) return forbidden('You do not have permission to manage members for this department.');
 
-  const { error } = await db
+  const { data, error } = await db
     .from('department_memberships')
     .delete()
     .eq('department_id', id)
-    .eq('user_id', parsed.data.user_id);
+    .eq('user_id', parsed.data.user_id)
+    .select('user_id')
+    .maybeSingle();
 
   if (error) return serverError(error.message);
+  if (!data) return badRequest('Membership not found');
   return ok({ removed: true, user_id: parsed.data.user_id, department_id: id });
 }
