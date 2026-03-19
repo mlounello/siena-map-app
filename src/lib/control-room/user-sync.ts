@@ -26,6 +26,7 @@ type SyncResult =
       syncedCount: number;
       status: number;
       trigger: SyncTrigger;
+      remoteSummary?: string;
     }
   | {
       ok: false;
@@ -33,7 +34,32 @@ type SyncResult =
       status: number | null;
       trigger: SyncTrigger;
       error: string;
+      remoteSummary?: string;
     };
+
+function summarizeRemoteBody(body: unknown): string | undefined {
+  if (!body || typeof body !== 'object') return undefined;
+
+  const record = body as Record<string, unknown>;
+  const parts: string[] = [];
+
+  for (const key of ['message', 'error', 'status', 'syncedCount', 'importedCount', 'updatedCount', 'createdCount']) {
+    const value = record[key];
+    if (value == null) continue;
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      parts.push(`${key}=${String(value)}`);
+    }
+  }
+
+  return parts.length > 0 ? parts.join(', ') : undefined;
+}
+
+function bodySignalsFailure(body: unknown): boolean {
+  if (!body || typeof body !== 'object') return false;
+
+  const record = body as Record<string, unknown>;
+  return record.ok === false || record.success === false || record.synced === false;
+}
 
 function mapGlobalRole(role: PlatformRole): string {
   return role === 'owner' || role === 'super_admin' ? 'admin' : 'member';
@@ -96,16 +122,54 @@ export async function syncSienaAppUsersToControlRoom(
       cache: 'no-store',
     });
 
+    const rawBody = await response.text().catch(() => '');
+    let parsedBody: unknown = null;
+
+    if (rawBody) {
+      try {
+        parsedBody = JSON.parse(rawBody);
+      } catch {
+        parsedBody = rawBody;
+      }
+    }
+
+    const remoteSummary = summarizeRemoteBody(parsedBody);
+
     if (!response.ok) {
-      const errorText = await response.text().catch(() => '');
-      const error = `Control room sync failed (${response.status})${errorText ? `: ${errorText}` : ''}`;
-      console.error('[control-room-sync]', { trigger, status: response.status, error });
+      const error = `Control room sync failed (${response.status})${rawBody ? `: ${rawBody}` : ''}`;
+      console.error('[control-room-sync]', {
+        trigger,
+        status: response.status,
+        error,
+        remoteSummary,
+        remoteBody: parsedBody,
+      });
       return {
         ok: false,
         syncedCount: payload.users.length,
         status: response.status,
         trigger,
         error,
+        remoteSummary,
+      };
+    }
+
+    if (bodySignalsFailure(parsedBody)) {
+      const error = `Control room sync returned a semantic failure despite HTTP ${response.status}`;
+      console.error('[control-room-sync]', {
+        trigger,
+        status: response.status,
+        error,
+        remoteSummary,
+        remoteBody: parsedBody,
+      });
+      return {
+        ok: false,
+        syncedCount: payload.users.length,
+        status: response.status,
+        trigger,
+        error,
+        remoteSummary,
       };
     }
 
@@ -113,6 +177,8 @@ export async function syncSienaAppUsersToControlRoom(
       trigger,
       status: response.status,
       syncedCount: payload.users.length,
+      remoteSummary,
+      remoteBody: parsedBody,
     });
 
     return {
@@ -120,6 +186,7 @@ export async function syncSienaAppUsersToControlRoom(
       syncedCount: payload.users.length,
       status: response.status,
       trigger,
+      remoteSummary,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown sync error';

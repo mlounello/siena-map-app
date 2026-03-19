@@ -79,8 +79,10 @@ export default function UsersAdminPage() {
     await load();
     setMessage(
       json.sync?.ok === false
-        ? `Role updated. Control room sync warning: ${json.sync.error ?? 'Sync failed.'}`
-        : 'Role updated and synced.'
+        ? `Role updated. Control room sync warning: ${json.sync.remoteSummary ?? json.sync.error ?? 'Sync failed.'}`
+        : json.sync?.remoteSummary
+          ? `Role updated and synced. Control room response: ${json.sync.remoteSummary}`
+          : 'Role updated and synced.'
     );
   }
 
@@ -99,7 +101,11 @@ export default function UsersAdminPage() {
       return;
     }
 
-    setMessage(`Synced ${json.syncedCount ?? 0} Siena Maps users to control room.`);
+    setMessage(
+      json?.remoteSummary
+        ? `Synced ${json.syncedCount ?? 0} Siena Maps users. Control room response: ${json.remoteSummary}`
+        : `Synced ${json.syncedCount ?? 0} Siena Maps users to control room.`
+    );
   }
 
   return (
