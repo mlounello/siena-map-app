@@ -15,12 +15,26 @@ export async function GET() {
   const { db } = await createDbClient();
   const { data, error } = await db
     .from('profiles')
-    .select('id, email, display_name, role, is_active, created_at, updated_at')
+    .select('id, email, display_name, role, is_active, created_at, updated_at, has_signed_in_to_app')
     .order('created_at', { ascending: false })
-    .limit(300);
+    .limit(500);
 
   if (error) return serverError(error.message);
-  return ok({ users: data ?? [] });
+
+  const { data: memberships, error: membershipsError } = await db
+    .from('department_memberships')
+    .select('user_id');
+
+  if (membershipsError) return serverError(membershipsError.message);
+
+  const memberIds = new Set((memberships ?? []).map((membership) => membership.user_id));
+  const users = (data ?? []).filter(
+    (user) => user.has_signed_in_to_app || user.role !== 'viewer' || memberIds.has(user.id)
+  );
+
+  return ok({
+    users: users.map(({ has_signed_in_to_app: _hasSignedInToApp, ...user }) => user),
+  });
 }
 
 export async function PATCH(request: Request) {

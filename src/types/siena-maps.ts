@@ -38,6 +38,8 @@ export interface Profile {
   avatar_url: string | null;
   role: PlatformRole;
   is_active: boolean;
+  has_signed_in_to_app: boolean;
+  last_app_sign_in_at: string | null;
   created_at: string;
   updated_at: string;
 }

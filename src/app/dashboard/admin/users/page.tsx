@@ -81,10 +81,10 @@ export default function UsersAdminPage() {
 
   return (
     <AppShell>
-      <PageHeader eyebrow="Administration" title="Users & Roles" subtitle="Assign platform-wide access levels and governance roles." />
+      <PageHeader eyebrow="Administration" title="Users & Roles" subtitle="Assign access for Siena Maps accounts that have actually signed into or been provisioned for this app." />
       {message ? <StatusMessage>{message}</StatusMessage> : null}
 
-      <SectionCard title="Role Snapshot" subtitle="Current role distribution across all accounts.">
+      <SectionCard title="Role Snapshot" subtitle="Current role distribution across Siena Maps accounts.">
         <div className="toolbar">
           <Badge label={`${summary.total} users`} tone="neutral" />
           <Badge label={`${summary.owners} owners`} tone="success" />
@@ -95,11 +95,11 @@ export default function UsersAdminPage() {
         </div>
       </SectionCard>
 
-      <SectionCard title="Role Management" subtitle="Owner and super admin can update user roles.">
+      <SectionCard title="Role Management" subtitle="Owner and super admin can update Siena Maps user roles.">
         {loading ? (
           <LoadingRows rows={6} />
         ) : users.length === 0 ? (
-          <EmptyState title="No users found" description="Users will appear here after first sign-in." />
+          <EmptyState title="No Siena Maps users found" description="Users appear here after signing into Siena Maps or being provisioned through Siena Maps governance." />
         ) : (
           <DataTable>
             <thead>

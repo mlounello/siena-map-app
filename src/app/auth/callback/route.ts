@@ -54,6 +54,8 @@ export async function GET(request: Request) {
         (user.email ? user.email.split('@')[0] : null),
       avatar_url: (user.user_metadata?.avatar_url as string | undefined) ?? null,
       is_active: true,
+      has_signed_in_to_app: true,
+      last_app_sign_in_at: new Date().toISOString(),
     },
     { onConflict: 'id' }
   );
