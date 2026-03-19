@@ -14,6 +14,10 @@ const updateSchema = z.object({
   role: z.enum(['department_head', 'editor', 'viewer']),
 });
 
+const removeSchema = z.object({
+  user_id: z.string().uuid(),
+});
+
 async function canManageDepartmentMembers(
   db: Awaited<ReturnType<typeof createDbClient>>['db'],
   profileId: string,
@@ -105,4 +109,27 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   if (error) return serverError(error.message);
   return ok({ membership: data });
+}
+
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const profile = await requireRole('department_head');
+  if (!profile) return unauthorized();
+  const { id } = await params;
+
+  const body = await request.json().catch(() => null);
+  const parsed = removeSchema.safeParse(body);
+  if (!parsed.success) return badRequest(parsed.error.issues.map((i) => i.message).join(', '));
+
+  const { db } = await createDbClient();
+  const allowed = await canManageDepartmentMembers(db, profile.id, profile.role, id);
+  if (!allowed) return forbidden('You do not have permission to manage members for this department.');
+
+  const { error } = await db
+    .from('department_memberships')
+    .delete()
+    .eq('department_id', id)
+    .eq('user_id', parsed.data.user_id);
+
+  if (error) return serverError(error.message);
+  return ok({ removed: true, user_id: parsed.data.user_id, department_id: id });
 }

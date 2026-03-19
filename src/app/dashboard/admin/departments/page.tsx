@@ -7,14 +7,20 @@ import { LoadingRows } from '@/components/ui/loading';
 
 type Department = { id: string; name: string; slug: string; description: string | null; is_active: boolean };
 type User = { id: string; email: string };
+type Member = {
+  user_id: string;
+  role: string;
+  profiles?: { email?: string };
+};
 
 export default function DepartmentsAdminPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [selectedDepartmentId, setSelectedDepartmentId] = useState('');
-  const [members, setMembers] = useState<Array<{ user_id: string; role: string; profiles?: { email?: string } }>>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [savingMemberId, setSavingMemberId] = useState<string | null>(null);
 
   const [createForm, setCreateForm] = useState({ name: '', slug: '', description: '' });
   const [memberForm, setMemberForm] = useState({ user_id: '', role: 'viewer' });
@@ -109,6 +115,43 @@ export default function DepartmentsAdminPage() {
     setMemberForm({ user_id: '', role: 'viewer' });
     await loadMembers(selectedDepartmentId);
     setMessage('Member added.');
+  }
+
+  async function updateMemberRole(userId: string, role: string) {
+    if (!selectedDepartmentId) return;
+
+    setSavingMemberId(userId);
+    const res = await fetch(`/api/departments/${selectedDepartmentId}/members`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId, role }),
+    });
+    const json = await res.json();
+    setSavingMemberId(null);
+
+    if (!res.ok) return setMessage(json.error ?? 'Failed to update member role');
+
+    await loadMembers(selectedDepartmentId);
+    setMessage('Member role updated.');
+  }
+
+  async function removeMember(userId: string, email: string) {
+    if (!selectedDepartmentId) return;
+    if (!window.confirm(`Remove ${email} from this department?`)) return;
+
+    setSavingMemberId(userId);
+    const res = await fetch(`/api/departments/${selectedDepartmentId}/members`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: userId }),
+    });
+    const json = await res.json();
+    setSavingMemberId(null);
+
+    if (!res.ok) return setMessage(json.error ?? 'Failed to remove member');
+
+    await loadMembers(selectedDepartmentId);
+    setMessage('Member removed.');
   }
 
   async function updateDepartment(e: React.FormEvent) {
@@ -290,13 +333,56 @@ export default function DepartmentsAdminPage() {
                     <tr>
                       <th>User</th>
                       <th>Role</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {members.map((member) => (
                       <tr key={member.user_id}>
                         <td className="row-title">{member.profiles?.email ?? userById[member.user_id] ?? 'Unknown user'}</td>
-                        <td>{member.role}</td>
+                        <td>
+                          <SelectInput
+                            value={member.role}
+                            onChange={(e) => {
+                              const nextRole = e.target.value;
+                              setMembers((current) =>
+                                current.map((entry) =>
+                                  entry.user_id === member.user_id ? { ...entry, role: nextRole } : entry
+                                )
+                              );
+                            }}
+                            disabled={savingMemberId === member.user_id}
+                          >
+                            <option value="viewer">viewer</option>
+                            <option value="editor">editor</option>
+                            <option value="department_head">department head</option>
+                          </SelectInput>
+                        </td>
+                        <td>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              onClick={() => void updateMemberRole(member.user_id, member.role)}
+                              disabled={savingMemberId === member.user_id}
+                            >
+                              Save Role
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="danger"
+                              onClick={() =>
+                                void removeMember(
+                                  member.user_id,
+                                  member.profiles?.email ?? userById[member.user_id] ?? 'this user'
+                                )
+                              }
+                              disabled={savingMemberId === member.user_id}
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
