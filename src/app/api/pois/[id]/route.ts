@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { badRequest, forbidden, ok, serverError, unauthorized } from '@/lib/api/http';
 import { requireRole } from '@/lib/auth/roles';
 import { createDbClient } from '@/lib/supabase/server';
-import { canEditPoi } from '@/lib/auth/access';
+import { canEditPoi, canViewPoi } from '@/lib/auth/access';
 import { hasMinRole } from '@/lib/siena/permissions';
 import type { Poi } from '@/types/siena-maps';
 
@@ -22,12 +22,16 @@ const updatePoiSchema = z.object({
 });
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
+  const profile = await requireRole('viewer');
+  if (!profile) return unauthorized();
+
   const { id } = await params;
   const { db } = await createDbClient();
 
   const { data, error } = await db.from('pois').select('*').eq('id', id).maybeSingle();
   if (error) return serverError(error.message);
   if (!data) return badRequest('POI not found');
+  if (!(await canViewPoi(profile, data))) return forbidden();
 
   return ok({ poi: data as Poi });
 }

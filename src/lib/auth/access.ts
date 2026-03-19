@@ -34,6 +34,23 @@ export async function isDepartmentMember(
   return !!data;
 }
 
+async function getMembershipDepartmentIds(
+  userId: string,
+  roles?: Array<'department_head' | 'editor' | 'viewer'>
+): Promise<string[]> {
+  const { db } = await createDbClient();
+  let query = db.from('department_memberships').select('department_id').eq('user_id', userId);
+
+  if (roles?.length) {
+    query = query.in('role', roles);
+  }
+
+  const { data, error } = await query;
+  if (error) return [];
+
+  return (data ?? []).map((row) => row.department_id as string);
+}
+
 export async function getMapContext(mapId: string) {
   const { db } = await createDbClient();
 
@@ -83,6 +100,39 @@ export async function canEditMap(profile: Profile, mapId: string): Promise<boole
   return false;
 }
 
+export async function getViewableMapIds(profile: Profile): Promise<string[] | null> {
+  if (roleAtLeast(profile.role, 'super_admin')) return null;
+
+  const departmentIds = await getMembershipDepartmentIds(profile.id, [
+    'department_head',
+    'editor',
+    'viewer',
+  ]);
+
+  if (!departmentIds.length) return [];
+
+  const { db } = await createDbClient();
+  const [{ data: primaryMaps, error: primaryMapsError }, { data: collaboratorMaps, error: collaboratorMapsError }] =
+    await Promise.all([
+      db.from('maps').select('id').in('primary_department_id', departmentIds),
+      db.from('map_departments').select('map_id').in('department_id', departmentIds),
+    ]);
+
+  if (primaryMapsError || collaboratorMapsError) return [];
+
+  return Array.from(
+    new Set([
+      ...(primaryMaps ?? []).map((row) => row.id as string),
+      ...(collaboratorMaps ?? []).map((row) => row.map_id as string),
+    ])
+  );
+}
+
+export async function canViewMap(profile: Profile, mapId: string): Promise<boolean> {
+  const viewableMapIds = await getViewableMapIds(profile);
+  return viewableMapIds === null || viewableMapIds.includes(mapId);
+}
+
 export async function canEditPoi(
   profile: Profile,
   poi: { map_id: string; owning_department_id: string; created_by: string | null }
@@ -99,4 +149,15 @@ export async function canEditPoi(
   }
 
   return false;
+}
+
+export async function canViewPoi(profile: Profile, poi: { map_id: string }): Promise<boolean> {
+  return canViewMap(profile, poi.map_id);
+}
+
+export async function canViewDepartmentMembers(profile: Profile, departmentId: string): Promise<boolean> {
+  if (roleAtLeast(profile.role, 'super_admin')) return true;
+  if (profile.role !== 'department_head') return false;
+
+  return isDepartmentMember(profile.id, departmentId, ['department_head']);
 }

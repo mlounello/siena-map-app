@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { badRequest, created, forbidden, ok, serverError, unauthorized } from '@/lib/api/http';
 import { requireRole } from '@/lib/auth/roles';
 import { createDbClient } from '@/lib/supabase/server';
+import { canViewDepartmentMembers } from '@/lib/auth/access';
 
 const addSchema = z.object({
   user_id: z.string().uuid(),
@@ -35,9 +36,12 @@ async function canManageDepartmentMembers(
 }
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
-  const profile = await requireRole('viewer');
+  const profile = await requireRole('department_head');
   if (!profile) return unauthorized();
   const { id } = await params;
+  if (!(await canViewDepartmentMembers(profile, id))) {
+    return forbidden('You do not have permission to view members for this department.');
+  }
 
   const { db } = await createDbClient();
   const { data, error } = await db

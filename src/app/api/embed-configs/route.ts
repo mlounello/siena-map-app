@@ -1,7 +1,8 @@
 import { z } from 'zod';
-import { badRequest, created, ok, serverError, unauthorized } from '@/lib/api/http';
+import { badRequest, created, forbidden, ok, serverError, unauthorized } from '@/lib/api/http';
 import { requireRole } from '@/lib/auth/roles';
 import { createDbClient } from '@/lib/supabase/server';
+import { canEditMap } from '@/lib/auth/access';
 
 const createSchema = z.object({
   map_id: z.string().uuid(),
@@ -28,10 +29,27 @@ export async function GET(request: Request) {
 
   const { db } = await createDbClient();
   let query = db.from('embed_configs').select('*').order('updated_at', { ascending: false }).limit(200);
-  if (mapId) query = query.eq('map_id', mapId);
+  if (mapId) {
+    if (!(await canEditMap(profile, mapId))) return forbidden();
+    query = query.eq('map_id', mapId);
+  }
 
   const { data, error } = await query;
   if (error) return serverError(error.message);
+
+  if (!mapId && profile.role !== 'owner' && profile.role !== 'super_admin') {
+    const embedConfigs = data ?? [];
+    const uniqueMapIds = Array.from(new Set(embedConfigs.map((config) => config.map_id as string)));
+    const editableMapEntries = await Promise.all(
+      uniqueMapIds.map(async (candidateMapId) => [candidateMapId, await canEditMap(profile, candidateMapId)] as const)
+    );
+    const editableMapLookup = new Map(editableMapEntries);
+
+    return ok({
+      embedConfigs: embedConfigs.filter((config) => editableMapLookup.get(config.map_id as string)),
+    });
+  }
+
   return ok({ embedConfigs: data ?? [] });
 }
 
@@ -42,6 +60,7 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) return badRequest(parsed.error.issues.map((i) => i.message).join(', '));
+  if (!(await canEditMap(profile, parsed.data.map_id))) return forbidden();
 
   const { db } = await createDbClient();
   const { data, error } = await db

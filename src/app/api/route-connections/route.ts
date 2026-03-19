@@ -1,7 +1,8 @@
 import { z } from 'zod';
-import { badRequest, created, ok, serverError, unauthorized } from '@/lib/api/http';
+import { badRequest, created, forbidden, ok, serverError, unauthorized } from '@/lib/api/http';
 import { requireRole } from '@/lib/auth/roles';
 import { createDbClient } from '@/lib/supabase/server';
+import { canEditMap, canViewMap, getViewableMapIds } from '@/lib/auth/access';
 
 const createSchema = z.object({
   map_id: z.string().uuid(),
@@ -32,7 +33,16 @@ export async function GET(request: Request) {
     .order('order_index', { ascending: true })
     .limit(500);
 
-  if (mapId) query = query.eq('map_id', mapId);
+  if (mapId) {
+    if (!(await canViewMap(profile, mapId))) return forbidden();
+    query = query.eq('map_id', mapId);
+  } else {
+    const viewableMapIds = await getViewableMapIds(profile);
+    if (viewableMapIds !== null) {
+      if (!viewableMapIds.length) return ok({ routeConnections: [] });
+      query = query.in('map_id', viewableMapIds);
+    }
+  }
 
   const { data, error } = await query;
   if (error) return serverError(error.message);
@@ -46,6 +56,7 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) return badRequest(parsed.error.issues.map((i) => i.message).join(', '));
+  if (!(await canEditMap(profile, parsed.data.map_id))) return forbidden();
 
   const { db } = await createDbClient();
   const payload = { ...parsed.data, created_by: profile.id };

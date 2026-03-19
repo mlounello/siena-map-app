@@ -1,7 +1,8 @@
 import { z } from 'zod';
-import { badRequest, created, ok, serverError, unauthorized } from '@/lib/api/http';
+import { badRequest, created, forbidden, ok, serverError, unauthorized } from '@/lib/api/http';
 import { createDbClient } from '@/lib/supabase/server';
 import { requireRole } from '@/lib/auth/roles';
+import { canEditMap, canViewMap, getViewableMapIds } from '@/lib/auth/access';
 import type { Poi } from '@/types/siena-maps';
 
 const createPoiSchema = z.object({
@@ -19,12 +20,24 @@ const createPoiSchema = z.object({
 });
 
 export async function GET(request: Request) {
+  const profile = await requireRole('viewer');
+  if (!profile) return unauthorized();
+
   const { searchParams } = new URL(request.url);
   const mapId = searchParams.get('mapId');
 
   const { db } = await createDbClient();
   let query = db.from('pois').select('*').order('updated_at', { ascending: false }).limit(250);
-  if (mapId) query = query.eq('map_id', mapId);
+  if (mapId) {
+    if (!(await canViewMap(profile, mapId))) return forbidden();
+    query = query.eq('map_id', mapId);
+  } else {
+    const viewableMapIds = await getViewableMapIds(profile);
+    if (viewableMapIds !== null) {
+      if (!viewableMapIds.length) return ok({ pois: [] as Poi[] });
+      query = query.in('map_id', viewableMapIds);
+    }
+  }
 
   const { data, error } = await query;
   if (error) return serverError(error.message);
@@ -43,6 +56,9 @@ export async function POST(request: Request) {
   }
 
   const { db } = await createDbClient();
+  if (!(await canEditMap(profile, parsed.data.map_id))) {
+    return forbidden();
+  }
 
   const payload = {
     ...parsed.data,

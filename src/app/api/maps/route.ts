@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { created, forbidden, ok, serverError, unauthorized, badRequest } from '@/lib/api/http';
 import { createDbClient } from '@/lib/supabase/server';
 import { requireRole } from '@/lib/auth/roles';
+import { getViewableMapIds } from '@/lib/auth/access';
 import type { MapRecord } from '@/types/siena-maps';
 
 const createMapSchema = z.object({
@@ -20,6 +21,9 @@ const createMapSchema = z.object({
 });
 
 export async function GET(request: Request) {
+  const profile = await requireRole('viewer');
+  if (!profile) return unauthorized();
+
   const { searchParams } = new URL(request.url);
   const departmentId = searchParams.get('departmentId');
   const shellStatus = searchParams.get('shellStatus');
@@ -31,6 +35,12 @@ export async function GET(request: Request) {
     .select('*')
     .order('updated_at', { ascending: false })
     .limit(100);
+
+  const viewableMapIds = await getViewableMapIds(profile);
+  if (viewableMapIds !== null) {
+    if (!viewableMapIds.length) return ok({ maps: [] as MapRecord[] });
+    query = query.in('id', viewableMapIds);
+  }
 
   if (departmentId) query = query.eq('primary_department_id', departmentId);
   if (shellStatus) query = query.eq('shell_status', shellStatus);

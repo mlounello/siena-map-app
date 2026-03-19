@@ -1,7 +1,8 @@
 import { z } from 'zod';
-import { badRequest, ok, serverError, unauthorized } from '@/lib/api/http';
+import { badRequest, forbidden, ok, serverError, unauthorized } from '@/lib/api/http';
 import { requireRole } from '@/lib/auth/roles';
 import { createDbClient } from '@/lib/supabase/server';
+import { canEditMap } from '@/lib/auth/access';
 
 const updateSchema = z.object({
   name: z.string().min(2).max(120).optional(),
@@ -28,6 +29,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (!parsed.success) return badRequest(parsed.error.issues.map((i) => i.message).join(', '));
 
   const { db } = await createDbClient();
+  const { data: existing, error: existingError } = await db
+    .from('embed_configs')
+    .select('id, map_id')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (existingError) return serverError(existingError.message);
+  if (!existing) return badRequest('Embed config not found');
+  if (!(await canEditMap(profile, existing.map_id))) return forbidden();
+
   const { data, error } = await db
     .from('embed_configs')
     .update(parsed.data)
@@ -45,6 +56,16 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ id: str
   const { id } = await params;
 
   const { db } = await createDbClient();
+  const { data: existing, error: existingError } = await db
+    .from('embed_configs')
+    .select('id, map_id')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (existingError) return serverError(existingError.message);
+  if (!existing) return badRequest('Embed config not found');
+  if (!(await canEditMap(profile, existing.map_id))) return forbidden();
+
   const { error } = await db.from('embed_configs').delete().eq('id', id);
   if (error) return serverError(error.message);
 

@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { badRequest, forbidden, ok, serverError, unauthorized } from '@/lib/api/http';
 import { requireRole } from '@/lib/auth/roles';
 import { createDbClient } from '@/lib/supabase/server';
-import { canEditMap } from '@/lib/auth/access';
+import { canEditMap, canViewMap } from '@/lib/auth/access';
 import { hasMinRole } from '@/lib/siena/permissions';
 import type { MapRecord } from '@/types/siena-maps';
 
@@ -28,7 +28,13 @@ const updateMapSchema = z.object({
 });
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
+  const profile = await requireRole('viewer');
+  if (!profile) return unauthorized();
+
   const { id } = await params;
+  const permitted = await canViewMap(profile, id);
+  if (!permitted) return forbidden();
+
   const { db } = await createDbClient();
 
   const { data, error } = await db.from('maps').select('*').eq('id', id).maybeSingle();

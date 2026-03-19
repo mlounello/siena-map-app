@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { badRequest, created, forbidden, ok, serverError, unauthorized } from '@/lib/api/http';
-import { canEditMap } from '@/lib/auth/access';
+import { canEditMap, canViewMap } from '@/lib/auth/access';
 import { requireRole } from '@/lib/auth/roles';
 import { createDbClient } from '@/lib/supabase/server';
 import type { GuidedRoute, GuidedRouteStop } from '@/types/siena-maps';
@@ -17,6 +17,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const mapId = searchParams.get('mapId');
   if (!mapId) return badRequest('mapId is required');
+  if (!(await canViewMap(profile, mapId))) return forbidden();
 
   const { db } = await createDbClient();
 
