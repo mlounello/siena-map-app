@@ -10,6 +10,7 @@ type User = {
   email: string;
   display_name: string | null;
   role: 'owner' | 'super_admin' | 'department_head' | 'editor' | 'viewer';
+  is_active: boolean;
 };
 
 function roleTone(role: User['role']): 'neutral' | 'info' | 'success' | 'warning' {
@@ -21,6 +22,7 @@ function roleTone(role: User['role']): 'neutral' | 'info' | 'success' | 'warning
 
 export default function UsersAdminPage() {
   const [users, setUsers] = useState<User[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
@@ -35,6 +37,7 @@ export default function UsersAdminPage() {
       setLoading(false);
       return;
     }
+    setCurrentUserId(json.currentUserId ?? null);
     setUsers(json.users ?? []);
     setLoading(false);
   }
@@ -51,6 +54,8 @@ export default function UsersAdminPage() {
       departmentHeads: 0,
       editors: 0,
       viewers: 0,
+      active: 0,
+      inactive: 0,
     };
 
     for (const user of users) {
@@ -59,6 +64,8 @@ export default function UsersAdminPage() {
       if (user.role === 'department_head') counts.departmentHeads += 1;
       if (user.role === 'editor') counts.editors += 1;
       if (user.role === 'viewer') counts.viewers += 1;
+      if (user.is_active) counts.active += 1;
+      else counts.inactive += 1;
     }
 
     return counts;
@@ -83,6 +90,26 @@ export default function UsersAdminPage() {
         : json.sync?.remoteSummary
           ? `Role updated and synced. Control room response: ${json.sync.remoteSummary}`
           : 'Role updated and synced.'
+    );
+  }
+
+  async function changeAccess(user: User) {
+    setUpdatingUserId(user.id);
+    const res = await fetch('/api/users', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: user.id, is_active: !user.is_active }),
+    });
+
+    const json = await res.json();
+    setUpdatingUserId(null);
+    if (!res.ok) return setMessage(json.error ?? 'Failed to update access');
+
+    await load();
+    setMessage(
+      json.sync?.ok === false
+        ? `Access updated. Control room sync warning: ${json.sync.remoteSummary ?? json.sync.error ?? 'Sync failed.'}`
+        : `Access ${user.is_active ? 'disabled' : 'enabled'} and synced.`
     );
   }
 
@@ -130,6 +157,8 @@ export default function UsersAdminPage() {
           <Badge label={`${summary.departmentHeads} department heads`} tone="info" />
           <Badge label={`${summary.editors} editors`} tone="warning" />
           <Badge label={`${summary.viewers} viewers`} tone="neutral" />
+          <Badge label={`${summary.active} active`} tone="success" />
+          <Badge label={`${summary.inactive} inactive`} tone="danger" />
         </div>
       </SectionCard>
 
@@ -145,6 +174,7 @@ export default function UsersAdminPage() {
                 <th>Email</th>
                 <th>Display Name</th>
                 <th>Current Role</th>
+                <th>App Access</th>
                 <th>Assign Role</th>
               </tr>
             </thead>
@@ -155,6 +185,25 @@ export default function UsersAdminPage() {
                   <td>{user.display_name ?? '—'}</td>
                   <td>
                     <Badge label={user.role.replaceAll('_', ' ')} tone={roleTone(user.role)} />
+                  </td>
+                  <td>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        label={user.is_active ? 'active' : 'inactive'}
+                        tone={user.is_active ? 'success' : 'danger'}
+                      />
+                      <Button
+                        variant={user.is_active ? 'danger' : 'secondary'}
+                        disabled={
+                          updatingUserId === user.id ||
+                          user.role === 'owner' ||
+                          user.id === currentUserId
+                        }
+                        onClick={() => void changeAccess(user)}
+                      >
+                        {user.is_active ? 'Disable' : 'Enable'}
+                      </Button>
+                    </div>
                   </td>
                   <td>
                     <FormField>

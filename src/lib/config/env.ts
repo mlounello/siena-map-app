@@ -6,7 +6,6 @@ const serverSchema = z.object({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(20),
   NEXT_PUBLIC_APP_SCHEMA: z.string().min(1).default('app_siena_maps'),
   APP_SCHEMA: z.string().min(1).optional(),
-  OWNER_EMAIL: z.string().email().optional(),
   APP_SYNC_SECRET: z.string().min(20).optional(),
   CF_ACCESS_CLIENT_ID: z.string().min(10).optional(),
   CF_ACCESS_CLIENT_SECRET: z.string().min(10).optional(),

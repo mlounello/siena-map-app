@@ -2,6 +2,13 @@ import { createDbClient } from '@/lib/supabase/server';
 import { syncSienaAppUsersToControlRoom } from '@/lib/control-room/user-sync';
 import { NextResponse } from 'next/server';
 
+function loginRedirect(requestUrl: string, error: string, message?: string) {
+  const loginUrl = new URL('/login', requestUrl);
+  loginUrl.searchParams.set('error', error);
+  if (message) loginUrl.searchParams.set('message', message);
+  return NextResponse.redirect(loginUrl);
+}
+
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
@@ -9,27 +16,17 @@ export async function GET(request: Request) {
   const oauthErrorDescription = requestUrl.searchParams.get('error_description');
 
   if (oauthError) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('error', oauthError);
-    if (oauthErrorDescription) {
-      loginUrl.searchParams.set('message', oauthErrorDescription);
-    }
-    return NextResponse.redirect(loginUrl);
+    return loginRedirect(request.url, oauthError, oauthErrorDescription ?? undefined);
   }
 
   if (!code) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('error', 'missing_oauth_code');
-    return NextResponse.redirect(loginUrl);
+    return loginRedirect(request.url, 'missing_oauth_code');
   }
 
   const { supabase, db } = await createDbClient();
   const { error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('error', 'oauth_exchange_failed');
-    loginUrl.searchParams.set('message', error.message);
-    return NextResponse.redirect(loginUrl);
+    return loginRedirect(request.url, 'oauth_exchange_failed', error.message);
   }
 
   const {
@@ -38,34 +35,41 @@ export async function GET(request: Request) {
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('error', 'session_user_unavailable');
-    if (userError?.message) loginUrl.searchParams.set('message', userError.message);
-    return NextResponse.redirect(loginUrl);
+    return loginRedirect(request.url, 'session_user_unavailable', userError?.message);
   }
 
-  // Self-heal missing legacy profiles (accounts created before trigger/policy alignment).
-  // This preserves owner-as-account behavior while avoiding service-role usage.
-  const { error: profileError } = await db.from('profiles').upsert(
-    {
-      id: user.id,
-      email: user.email ?? '',
+  const { data: hasAppAccess, error: accessError } = await db.rpc('has_app_access', {
+    p_user_id: user.id,
+  });
+
+  if (accessError || hasAppAccess !== true) {
+    // Clear only this browser session. Do not revoke the user's sessions in other
+    // apps that share the Supabase Auth project.
+    await supabase.auth.signOut({ scope: 'local' });
+    return loginRedirect(
+      request.url,
+      accessError ? 'access_check_failed' : 'not_authorized'
+    );
+  }
+
+  // Access is provisioned by an administrator. Sign-in may refresh descriptive
+  // profile fields, but it must never create an account, reactivate one, or
+  // change its authorization role.
+  const { error: profileError } = await db
+    .from('profiles')
+    .update({
       display_name:
         (user.user_metadata?.full_name as string | undefined) ??
         (user.email ? user.email.split('@')[0] : null),
       avatar_url: (user.user_metadata?.avatar_url as string | undefined) ?? null,
-      is_active: true,
       has_signed_in_to_app: true,
       last_app_sign_in_at: new Date().toISOString(),
-    },
-    { onConflict: 'id' }
-  );
+    })
+    .eq('id', user.id);
 
   if (profileError) {
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('error', 'profile_sync_failed');
-    loginUrl.searchParams.set('message', profileError.message);
-    return NextResponse.redirect(loginUrl);
+    await supabase.auth.signOut({ scope: 'local' });
+    return loginRedirect(request.url, 'profile_sync_failed');
   }
 
   await syncSienaAppUsersToControlRoom(db, 'auth_callback');

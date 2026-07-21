@@ -31,7 +31,6 @@ Phase 1 scaffold for Siena's internal map publishing platform.
 - OAuth callback route: `/auth/callback`
 - Default app schema: `app_siena_maps`
 - Health route: `/api/health`
-- Owner bootstrap route: `POST /api/admin/bootstrap-owner` (requires authenticated Google session + `OWNER_EMAIL`)
 
 ## UI System (Required for New Pages)
 

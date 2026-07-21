@@ -13,9 +13,20 @@ export default function LoginPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    setCallbackError(params.get('error'));
+    const errorCode = params.get('error');
+    setCallbackError(errorCode);
     setCallbackMessage(params.get('message'));
   }, []);
+
+  function callbackErrorText(errorCode: string) {
+    if (errorCode === 'not_authorized') {
+      return 'This Google account is not active and authorized for Siena Maps. Ask a Siena Maps administrator for access.';
+    }
+    if (errorCode === 'access_check_failed') {
+      return 'Siena Maps could not verify access. Please try again or contact an administrator.';
+    }
+    return `Sign-in error: ${errorCode}`;
+  }
 
   async function signInWithGoogle() {
     setLoading(true);
@@ -36,10 +47,10 @@ export default function LoginPage() {
       <PageHeader
         eyebrow="Authentication"
         title="Sign In"
-        subtitle="Use your Siena Google account to access map governance, approvals, and publishing workflows."
+        subtitle="Use any Google account that an administrator has authorized for Siena Maps."
       />
 
-      <Panel title="Continue with Google" subtitle="Secure sign-in for authorized Siena users.">
+      <Panel title="Continue with Google" subtitle="Secure sign-in for authorized Siena Maps members.">
         <div className="space-y-4">
           <Button type="button" onClick={signInWithGoogle} disabled={loading} className="w-full justify-center">
             <Chrome className="h-4 w-4" />
@@ -50,7 +61,7 @@ export default function LoginPage() {
 
           {callbackError ? (
             <p className="text-sm text-[var(--accent-red)]">
-              OAuth error: {callbackError}
+              {callbackErrorText(callbackError)}
               {callbackMessage ? ` (${callbackMessage})` : ''}
             </p>
           ) : null}

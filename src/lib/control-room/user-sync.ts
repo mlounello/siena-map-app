@@ -7,7 +7,7 @@ type DbClient = Awaited<ReturnType<typeof import('@/lib/supabase/server').create
 const CONTROL_ROOM_SYNC_URL =
   env.CONTROL_ROOM_APP_USERS_SYNC_URL || 'https://mlounello.com/api/admin/sync/app-users';
 
-type SyncTrigger = 'manual_admin' | 'auth_callback' | 'role_change';
+type SyncTrigger = 'manual_admin' | 'auth_callback' | 'role_change' | 'access_change';
 
 type ControlRoomSyncUser = {
   fullName: string;

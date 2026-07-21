@@ -97,7 +97,7 @@ export function Header() {
     void fetch('/api/auth/check', { cache: 'no-store' })
       .then((res) => res.json())
       .then((json) => {
-        if (cancelled || !json?.authenticated) return;
+        if (cancelled || !json?.authenticated || !json?.authorized) return;
         setUser({ email: json.user?.email, profile: json.profile ?? null });
       })
       .catch(() => {

@@ -7,7 +7,10 @@ import { listSienaAppUsers } from '@/lib/users/app-users';
 
 const updateSchema = z.object({
   user_id: z.string().uuid(),
-  role: z.enum(['owner', 'super_admin', 'department_head', 'editor', 'viewer']),
+  role: z.enum(['owner', 'super_admin', 'department_head', 'editor', 'viewer']).optional(),
+  is_active: z.boolean().optional(),
+}).refine((value) => (value.role === undefined) !== (value.is_active === undefined), {
+  message: 'Provide exactly one of role or is_active',
 });
 
 export async function GET() {
@@ -18,6 +21,7 @@ export async function GET() {
   try {
     const users = await listSienaAppUsers(db);
     return ok({
+      currentUserId: profile.id,
       users: users.map(
         ({ has_signed_in_to_app: _hasSignedInToApp, last_app_sign_in_at: _lastAppSignInAt, ...user }) => user
       ),
@@ -38,30 +42,58 @@ export async function PATCH(request: Request) {
   const { db } = await createDbClient();
   const { data: targetProfile, error: targetError } = await db
     .from('profiles')
-    .select('id, role')
+    .select('id, role, is_active')
     .eq('id', parsed.data.user_id)
     .maybeSingle();
 
   if (targetError) return serverError(targetError.message);
   if (!targetProfile) return badRequest('User not found');
 
-  if (targetProfile.role === 'owner' && actor.role !== 'owner') {
-    return forbidden('Only owner can modify owner accounts');
+  if (parsed.data.role !== undefined) {
+    if (targetProfile.role === 'owner' && actor.role !== 'owner') {
+      return forbidden('Only owner can modify owner accounts');
+    }
+
+    if (parsed.data.role === 'owner' && actor.role !== 'owner') {
+      return forbidden('Only owner can assign owner role');
+    }
+
+    const { data, error } = await db
+      .from('profiles')
+      .update({ role: parsed.data.role })
+      .eq('id', parsed.data.user_id)
+      .select('id, email, display_name, role, is_active, created_at, updated_at')
+      .single();
+
+    if (error) return serverError(error.message);
+
+    const sync = await syncSienaAppUsersToControlRoom(db, 'role_change');
+    return ok({ user: data, sync });
   }
 
-  if (parsed.data.role === 'owner' && actor.role !== 'owner') {
-    return forbidden('Only owner can assign owner role');
+  if (targetProfile.role === 'owner' && parsed.data.is_active === false) {
+    return forbidden('The protected owner account cannot be deactivated');
   }
+
+  if (targetProfile.id === actor.id && parsed.data.is_active === false) {
+    return forbidden('You cannot disable your own Siena Maps access');
+  }
+
+  const { error: accessError } = await db.rpc('set_user_access', {
+    p_user_id: parsed.data.user_id,
+    p_is_active: parsed.data.is_active,
+  });
+
+  if (accessError) return serverError(accessError.message);
 
   const { data, error } = await db
     .from('profiles')
-    .update({ role: parsed.data.role })
-    .eq('id', parsed.data.user_id)
     .select('id, email, display_name, role, is_active, created_at, updated_at')
+    .eq('id', parsed.data.user_id)
     .single();
 
   if (error) return serverError(error.message);
 
-  const sync = await syncSienaAppUsersToControlRoom(db, 'role_change');
+  const sync = await syncSienaAppUsersToControlRoom(db, 'access_change');
   return ok({ user: data, sync });
 }
