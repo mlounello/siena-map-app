@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { badRequest, forbidden, ok, serverError, unauthorized } from '@/lib/api/http';
 import { requireRole } from '@/lib/auth/roles';
-import { syncSienaAppUsersToControlRoom } from '@/lib/control-room/user-sync';
 import { createDbClient } from '@/lib/supabase/server';
 import { listSienaAppUsers } from '@/lib/users/app-users';
 
@@ -67,8 +66,7 @@ export async function PATCH(request: Request) {
 
     if (error) return serverError(error.message);
 
-    const sync = await syncSienaAppUsersToControlRoom(db, 'role_change');
-    return ok({ user: data, sync });
+    return ok({ user: data });
   }
 
   if (targetProfile.role === 'owner' && parsed.data.is_active === false) {
@@ -94,6 +92,5 @@ export async function PATCH(request: Request) {
 
   if (error) return serverError(error.message);
 
-  const sync = await syncSienaAppUsersToControlRoom(db, 'access_change');
-  return ok({ user: data, sync });
+  return ok({ user: data });
 }

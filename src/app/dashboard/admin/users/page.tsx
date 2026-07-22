@@ -26,7 +26,6 @@ export default function UsersAdminPage() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
-  const [syncing, setSyncing] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -84,13 +83,7 @@ export default function UsersAdminPage() {
     if (!res.ok) return setMessage(json.error ?? 'Failed to update role');
 
     await load();
-    setMessage(
-      json.sync?.ok === false
-        ? `Role updated. Control room sync warning: ${json.sync.remoteSummary ?? json.sync.error ?? 'Sync failed.'}`
-        : json.sync?.remoteSummary
-          ? `Role updated and synced. Control room response: ${json.sync.remoteSummary}`
-          : 'Role updated and synced.'
-    );
+    setMessage('Role updated.');
   }
 
   async function changeAccess(user: User) {
@@ -106,33 +99,7 @@ export default function UsersAdminPage() {
     if (!res.ok) return setMessage(json.error ?? 'Failed to update access');
 
     await load();
-    setMessage(
-      json.sync?.ok === false
-        ? `Access updated. Control room sync warning: ${json.sync.remoteSummary ?? json.sync.error ?? 'Sync failed.'}`
-        : `Access ${user.is_active ? 'disabled' : 'enabled'} and synced.`
-    );
-  }
-
-  async function syncUsers() {
-    setSyncing(true);
-    const res = await fetch('/api/admin/sync-users', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-    const json = await res.json().catch(() => null);
-    setSyncing(false);
-
-    if (!res.ok) {
-      setMessage(json?.error ?? 'Failed to sync Siena Maps users to control room');
-      return;
-    }
-
-    setMessage(
-      json?.remoteSummary
-        ? `Synced ${json.syncedCount ?? 0} Siena Maps users. Control room response: ${json.remoteSummary}`
-        : `Synced ${json.syncedCount ?? 0} Siena Maps users to control room.`
-    );
+    setMessage(`Access ${user.is_active ? 'disabled' : 'enabled'}.`);
   }
 
   return (
@@ -141,11 +108,6 @@ export default function UsersAdminPage() {
         eyebrow="Administration"
         title="Users & Roles"
         subtitle="Assign access for Siena Maps accounts that have actually signed into or been provisioned for this app."
-        actions={
-          <Button variant="secondary" onClick={() => void syncUsers()} disabled={syncing}>
-            {syncing ? 'Syncing...' : 'Sync To Control Room'}
-          </Button>
-        }
       />
       {message ? <StatusMessage>{message}</StatusMessage> : null}
 

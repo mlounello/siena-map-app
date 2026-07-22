@@ -1,5 +1,4 @@
 import { createDbClient } from '@/lib/supabase/server';
-import { syncSienaAppUsersToControlRoom } from '@/lib/control-room/user-sync';
 import { NextResponse } from 'next/server';
 
 function loginRedirect(requestUrl: string, error: string, message?: string) {
@@ -76,8 +75,6 @@ export async function GET(request: Request) {
     await supabase.auth.signOut({ scope: 'local' });
     return loginRedirect(request.url, 'profile_sync_failed');
   }
-
-  await syncSienaAppUsersToControlRoom(db, 'auth_callback');
 
   return NextResponse.redirect(new URL('/dashboard', request.url));
 }
