@@ -63,14 +63,23 @@ async function findAuthUserId(email: string) {
 }
 
 async function hasSienaAccess(userId: string) {
-  const db = adminClient().schema(getAppSchemaFromEnv());
+  const admin = adminClient();
+  const db = admin.schema(getAppSchemaFromEnv());
   const [membership, profile] = await Promise.all([
-    db.rpc('is_app_member', { p_user_id: userId }),
+    admin
+      .schema('core')
+      .from('app_memberships')
+      .select('user_id')
+      .eq('user_id', userId)
+      .eq('app_id', 'siena_maps')
+      .eq('is_active', true)
+      .limit(1)
+      .maybeSingle(),
     db.from('profiles').select('id').eq('id', userId).eq('is_active', true).maybeSingle(),
   ]);
   if (membership.error) throw membership.error;
   if (profile.error) throw profile.error;
-  return membership.data === true && Boolean(profile.data);
+  return Boolean(membership.data && profile.data);
 }
 
 async function createDirectLink(email: string, redirectTo: string) {
