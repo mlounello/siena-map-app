@@ -51,19 +51,15 @@ export default function LoginPage() {
     setMagicLinkSent(false);
     setError(null);
 
-    const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithOtp({
-      email: email.trim().toLowerCase(),
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-        shouldCreateUser: false,
-      },
-    });
-
-    if (signInError && !/signups? not allowed|user not found/i.test(signInError.message)) {
-      setError(signInError.message);
-    } else {
+    try {
+      await fetch('/api/auth/magic-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
       setMagicLinkSent(true);
+    } catch {
+      setError('Siena Maps could not request a sign-in link. Please try again.');
     }
     setMagicLoading(false);
   }

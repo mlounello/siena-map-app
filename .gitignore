@@ -8,3 +8,4 @@ npm-debug.log*
 coverage
 .vercel
 alcohol-origins-template
+.env*
