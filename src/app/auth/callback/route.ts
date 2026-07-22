@@ -12,6 +12,8 @@ function loginRedirect(requestUrl: string, error: string, message?: string) {
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
+  const tokenHash = requestUrl.searchParams.get('token_hash');
+  const type = requestUrl.searchParams.get('type');
   const oauthError = requestUrl.searchParams.get('error');
   const oauthErrorDescription = requestUrl.searchParams.get('error_description');
 
@@ -19,14 +21,17 @@ export async function GET(request: Request) {
     return loginRedirect(request.url, oauthError, oauthErrorDescription ?? undefined);
   }
 
-  if (!code) {
-    return loginRedirect(request.url, 'missing_oauth_code');
-  }
-
   const { supabase, db } = await createDbClient();
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  const { error } = code
+    ? await supabase.auth.exchangeCodeForSession(code)
+    : tokenHash && type
+      ? await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: type as 'magiclink' | 'recovery' | 'invite' | 'signup' | 'email_change' | 'email',
+        })
+      : { error: new Error('Missing authentication callback credentials.') };
   if (error) {
-    return loginRedirect(request.url, 'oauth_exchange_failed', error.message);
+    return loginRedirect(request.url, 'authentication_exchange_failed', error.message);
   }
 
   const {
